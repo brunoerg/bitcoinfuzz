@@ -1,0 +1,1 @@
+extern bool miniscript_str_parse(std::string& miniscript_str);
