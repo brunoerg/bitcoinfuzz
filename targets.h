@@ -4,5 +4,5 @@
 #include <fuzzer/FuzzedDataProvider.h>
 #include <string>
 
-void MiniscriptStringParse(FuzzedDataProvider& provider);
+void MiniscriptPolicy(FuzzedDataProvider& provider);
 #endif

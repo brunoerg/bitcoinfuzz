@@ -13,8 +13,8 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size) {
     FuzzedDataProvider provider(data, size);
     std::string target{std::getenv("FUZZ")}; 
     
-    if (target == "miniscript_string_parse") {
-        MiniscriptStringParse(provider);
+    if (target == "miniscript_policy") {
+        MiniscriptPolicy(provider);
     } else {
       std::exit(EXIT_SUCCESS);
     }

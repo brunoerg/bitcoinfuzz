@@ -1,1 +1,1 @@
-extern bool miniscript_str_parse(std::string& miniscript_str);
+extern bool miniscript_policy(std::string& policy);

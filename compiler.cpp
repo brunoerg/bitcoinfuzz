@@ -934,6 +934,12 @@ void PrintCompilationResult(int level, const Result& res) {
 
 } // namespace
 
+bool ParsePolicy(const std::string& policy) {
+    Policy pol = Parse(policy);
+    if (!pol()) return false;
+    return true;
+}
+
 bool Compile(const std::string& policy, miniscript::NodeRef<CompilerContext::Key>& ret, double& avgcost) {
     Policy pol = Parse(policy);
     if (!pol()) return false;

@@ -43,6 +43,8 @@ extern const CompilerContext COMPILER_CTX;
 
 bool Compile(const std::string& policy, miniscript::NodeRef<CompilerContext::Key>& ret, double& avgcost);
 
+bool ParsePolicy(const std::string& policy);
+
 std::string Expand(std::string str);
 std::string Abbreviate(std::string str);
 

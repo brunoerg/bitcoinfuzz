@@ -5,10 +5,9 @@
 #include "targets.h"
 #include "compiler.h"
 
-extern "C" bool miniscript_str_parse(std::string& miniscript_str);
+extern "C" bool miniscript_policy(std::string& policy);
 
-void MiniscriptStringParse(FuzzedDataProvider& provider) {
+void MiniscriptPolicy(FuzzedDataProvider& provider) {
     auto input_str{provider.ConsumeBytesAsString(provider.remaining_bytes() - 1)};
-    (void)(miniscript_str_parse(input_str));
-    (void)miniscript::FromString(input_str, COMPILER_CTX);
+    assert(ParsePolicy(input_str) == miniscript_policy(input_str));
 }
