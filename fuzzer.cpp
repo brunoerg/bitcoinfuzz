@@ -7,7 +7,7 @@
 #include <fuzzer/FuzzedDataProvider.h>
 #include <script/miniscript.h>
 
-#include "targets.h"
+#include "targets/miniscript_policy.h"
 
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size) {
     FuzzedDataProvider provider(data, size);

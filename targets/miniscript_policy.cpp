@@ -2,8 +2,8 @@
 #include <script/miniscript.h>
 #include <string>
 
-#include "targets.h"
-#include "compiler.h"
+#include "miniscript_policy.h"
+#include "../compiler.h"
 
 extern "C" bool miniscript_policy(std::string& policy);
 
