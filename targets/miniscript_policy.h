@@ -1,8 +1,7 @@
-#ifndef TARGETS_H
-#define TARGETS_H
+#ifndef rust_miniscript_policy_H
+#define rust_miniscript_policy_H
 
 #include <fuzzer/FuzzedDataProvider.h>
-#include <string>
 
 void MiniscriptPolicy(FuzzedDataProvider& provider);
 #endif
