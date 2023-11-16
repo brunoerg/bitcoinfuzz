@@ -8,6 +8,7 @@
 #include <script/miniscript.h>
 
 #include "targets/miniscript_policy.h"
+#include "targets/miniscript_string.h"
 
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size) {
     FuzzedDataProvider provider(data, size);
@@ -15,6 +16,8 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size) {
     
     if (target == "miniscript_policy") {
         MiniscriptPolicy(provider);
+    } else if (target == "miniscript_string") {
+        MiniscriptFromString(provider);
     } else {
       std::exit(EXIT_SUCCESS);
     }

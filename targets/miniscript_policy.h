@@ -1,5 +1,5 @@
-#ifndef rust_miniscript_policy_H
-#define rust_miniscript_policy_H
+#ifndef RUST_MINISCRIPT_POLICY_H
+#define RUST_MINISCRIPT_POLICY_H
 
 #include <fuzzer/FuzzedDataProvider.h>
 

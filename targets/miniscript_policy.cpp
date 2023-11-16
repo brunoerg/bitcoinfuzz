@@ -1,5 +1,7 @@
 #include <fuzzer/FuzzedDataProvider.h>
 #include <string>
+#include <iostream>
+#include <stdio.h>
 
 #include "miniscript_policy.h"
 #include "../compiler.h"

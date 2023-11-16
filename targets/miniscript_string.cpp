@@ -5,6 +5,7 @@
 #include <script/miniscript.h>
 
 #include "miniscript_string.h"
+#include "../compiler.h"
 
 extern "C" bool rust_miniscript_from_str(std::string& miniscript_str);
 
@@ -15,7 +16,7 @@ void MiniscriptFromString(FuzzedDataProvider& provider)
     auto ret{miniscript::FromString(input_str, COMPILER_CTX)};
     auto conditions = ret && ret->IsSane();
     std::cout << conditions << std::endl;
+    std::cout << input_str << std::endl;
     assert(rust_miniscript_from_str(input_str) == conditions);
-    
 }
 
