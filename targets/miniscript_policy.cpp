@@ -8,7 +8,13 @@
 
 extern "C" bool rust_miniscript_policy(std::string& policy);
 
-void MiniscriptPolicy(FuzzedDataProvider& provider) {
+bool BitcoinCore(const std::string& input_str)
+{
+    return ParsePolicy(input_str);
+}
+
+void MiniscriptPolicy(FuzzedDataProvider& provider) 
+{
     std::string input_str{provider.ConsumeRemainingBytesAsString().c_str()};
-    assert(ParsePolicy(input_str) == rust_miniscript_policy(input_str));
+    assert(BitcoinCore(input_str) == rust_miniscript_policy(input_str));
 }
