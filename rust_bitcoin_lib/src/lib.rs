@@ -2,8 +2,9 @@ use std::ffi::CStr;
 use std::str::FromStr;
 use std::os::raw::c_char;
 
-use miniscript::{Miniscript, Segwitv0, bitcoin};
-use miniscript::bitcoin::script;
+use miniscript::bitcoin::secp256k1::XOnlyPublicKey;
+use miniscript::{Miniscript, Segwitv0, bitcoin, Tap};
+use miniscript::bitcoin::{script, PublicKey};
 use miniscript::policy::Concrete;
 
 #[no_mangle]
@@ -19,8 +20,10 @@ pub extern "C" fn rust_miniscript_policy(input: *const c_char) -> bool {
 #[no_mangle]
 pub extern "C" fn rust_miniscript_from_str(input: *const c_char) -> bool {
     if let Ok(data) = unsafe { CStr::from_ptr(input) }.to_str() {
-        if let Ok(_pol) = Miniscript::<bitcoin::PublicKey, Segwitv0>::from_str(data) {
-            return true;
+        if let Ok(_pol) = Miniscript::<String, Segwitv0>::from_str(data) {
+            return true
+        } else if let Ok(_pol) = Miniscript::<String, Tap>::from_str(data) {
+            return true
         }
     }
     false
@@ -33,9 +36,10 @@ pub extern "C" fn rust_miniscript_from_script(data: *const u8, len: usize) -> bo
 
     let script = script::Script::from_bytes(data_slice);
 
-    if let Ok(pt) = Miniscript::<miniscript::bitcoin::PublicKey, Segwitv0>::parse(script) {
-        let output = pt.encode();
-        assert_eq!(pt.script_size(), output.len());
+    if let Ok(_pt) = Miniscript::<PublicKey, Segwitv0>::parse(script) {
+        return true
+    } else if let Ok(_pt) = Miniscript::<XOnlyPublicKey, Tap>::parse(script) {
+        return true
     }
 
     false
