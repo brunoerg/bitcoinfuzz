@@ -6,7 +6,7 @@
 #include "miniscript_policy.h"
 #include "../compiler.h"
 
-extern "C" bool rust_miniscript_policy(std::string& policy);
+extern "C" bool rust_miniscript_policy(const char* policy);
 
 bool BitcoinCorePolicy(const std::string& input_str)
 {
@@ -15,6 +15,6 @@ bool BitcoinCorePolicy(const std::string& input_str)
 
 void MiniscriptPolicy(FuzzedDataProvider& provider) 
 {
-    std::string input_str{provider.ConsumeRemainingBytesAsString().c_str()};
-    assert(BitcoinCorePolicy(input_str) == rust_miniscript_policy(input_str));
+    std::string input_str{provider.ConsumeRemainingBytesAsString()};
+    assert(BitcoinCorePolicy(input_str) == rust_miniscript_policy(input_str.c_str()));
 }

@@ -3,15 +3,15 @@ use std::str::FromStr;
 use std::os::raw::c_char;
 
 use miniscript::bitcoin::secp256k1::XOnlyPublicKey;
-use miniscript::{Miniscript, Segwitv0, bitcoin, Tap};
+use miniscript::{Miniscript, Segwitv0, Tap};
 use miniscript::bitcoin::{script, PublicKey};
 use miniscript::policy::Concrete;
 
 #[no_mangle]
 pub extern "C" fn rust_miniscript_policy(input: *const c_char) -> bool {
     if let Ok(data) = unsafe { CStr::from_ptr(input) }.to_str() {
-        if let Ok(_pol) = Concrete::<String>::from_str(data) {
-            return true
+        if let Ok(pol) = Concrete::<String>::from_str(data) {
+            return pol.is_valid().is_ok()
         }
     }
     false
@@ -20,9 +20,9 @@ pub extern "C" fn rust_miniscript_policy(input: *const c_char) -> bool {
 #[no_mangle]
 pub extern "C" fn rust_miniscript_from_str(input: *const c_char) -> bool {
     if let Ok(data) = unsafe { CStr::from_ptr(input) }.to_str() {
-        if let Ok(_pol) = Miniscript::<String, Segwitv0>::from_str(data) {
+        if let Ok(_pol) = Miniscript::<String, Segwitv0>::from_str_insane(data) {
             return true
-        } else if let Ok(_pol) = Miniscript::<String, Tap>::from_str(data) {
+        } else if let Ok(_pol) = Miniscript::<String, Tap>::from_str_insane(data) {
             return true
         }
     }
