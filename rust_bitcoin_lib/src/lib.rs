@@ -9,13 +9,8 @@ use miniscript::policy::Concrete;
 #[no_mangle]
 pub extern "C" fn rust_miniscript_policy(input: *const c_char) -> bool {
     if let Ok(data) = unsafe { CStr::from_ptr(input) }.to_str() {
-        if let Ok(pol) = Concrete::<String>::from_str(data) {
-            match pol.is_valid() {
-                Ok(_) => true,
-                Err(_) => false,
-            };
-        } else {
-            return false
+        if let Ok(_pol) = Concrete::<String>::from_str(data) {
+            return true
         }
     }
     false
