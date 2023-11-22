@@ -21,6 +21,6 @@ void MiniscriptFromString(FuzzedDataProvider& provider)
     std::string input_str{provider.ConsumeRemainingBytesAsString().c_str()};
     const bool core{BitcoinCoreString(input_str)};
     const bool rust_miniscript{rust_miniscript_from_str(input_str.c_str())};
-    if (rust_miniscript) assert(core);
+    assert(core == rust_miniscript);
 }
 
