@@ -11,3 +11,7 @@ This project is experimental and will change frequently. It's not stable.
 # Running
 
 `FUZZ=miniscript_string ./bitcoinfuzz`
+
+# Bugs found by Bitcoinfuzz
+
+- sipa/miniscript: https://github.com/sipa/miniscript/issues/140
