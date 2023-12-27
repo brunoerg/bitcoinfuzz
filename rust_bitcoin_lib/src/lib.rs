@@ -20,9 +20,9 @@ pub extern "C" fn rust_miniscript_policy(input: *const c_char) -> bool {
 #[no_mangle]
 pub extern "C" fn rust_miniscript_from_str(input: *const c_char) -> bool {
     if let Ok(data) = unsafe { CStr::from_ptr(input) }.to_str() {
-        if let Ok(_pol) = Miniscript::<String, Segwitv0>::from_str_insane(data) {
+        if let Ok(_pol) = Miniscript::<String, Segwitv0>::from_str(data) {
             return true
-        } else if let Ok(_pol) = Miniscript::<String, Tap>::from_str_insane(data) {
+        } else if let Ok(_pol) = Miniscript::<String, Tap>::from_str(data) {
             return true
         }
     }
