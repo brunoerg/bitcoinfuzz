@@ -16,7 +16,9 @@ bool BitcoinCoreString(const std::string& input_str)
 
 void MiniscriptFromString(FuzzedDataProvider& provider) 
 {
-    std::string input_str{provider.ConsumeRemainingBytesAsString()};
+    std::string input_str{provider.ConsumeRemainingBytesAsString().c_str()};
+    // See: https://github.com/rust-bitcoin/rust-miniscript/issues/633
+    if (input_str.find("l:0") != std::string::npos) return;
     const bool core{BitcoinCoreString(input_str)};
     const bool rust_miniscript{rust_miniscript_from_str(input_str.c_str())};
     assert(core == rust_miniscript);
