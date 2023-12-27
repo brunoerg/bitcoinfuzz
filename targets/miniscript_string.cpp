@@ -10,7 +10,7 @@ extern "C" bool rust_miniscript_from_str(const char* miniscript_str);
 bool BitcoinCoreString(const std::string& input_str)
 {
     auto ret{miniscript::FromString(input_str, COMPILER_CTX)};
-    if (!ret || !ret->IsValidTopLevel()) return false;
+    if (!ret || !ret->IsSane()) return false;
     return true;
 }
 
