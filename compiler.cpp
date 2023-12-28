@@ -858,7 +858,7 @@ std::string Disassembler(CScript::const_iterator& it, CScript::const_iterator en
             while (data.size() && data.back() == 0) data.pop_back();
             ret += "<" + std::string((const char*)data.data() + 4, data.size() - 4) + ">";
         } else if (data.size() > 0) {
-            ret += "<" + HexStr(data.begin(), data.end()) + ">";
+            ret += "<" + HexStr(data) + ">";
         } else {
             ret += std::string(GetOpName(opcode));
             if (opcode == OP_IF || opcode == OP_NOTIF) {

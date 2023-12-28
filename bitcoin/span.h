@@ -1,14 +1,15 @@
-// Copyright (c) 2018-2020 The Bitcoin Core developers
+// Copyright (c) 2018-2022 The Bitcoin Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
 #ifndef BITCOIN_SPAN_H
 #define BITCOIN_SPAN_H
 
-#include <type_traits>
-#include <cstddef>
 #include <algorithm>
-#include <assert.h>
+#include <cassert>
+#include <cstddef>
+#include <span>
+#include <type_traits>
 
 #ifdef DEBUG
 #define CONSTEXPR_IF_NOT_DEBUG
@@ -96,7 +97,7 @@ template<typename C>
 class Span
 {
     C* m_data;
-    std::size_t m_size;
+    std::size_t m_size{0};
 
     template <class T>
     struct is_Span_int : public std::false_type {};
@@ -107,7 +108,7 @@ class Span
 
 
 public:
-    constexpr Span() noexcept : m_data(nullptr), m_size(0) {}
+    constexpr Span() noexcept : m_data(nullptr) {}
 
     /** Construct a span from a begin pointer and a size.
      *
@@ -222,14 +223,82 @@ public:
     template <typename O> friend class Span;
 };
 
+// Return result of calling .data() method on type T. This is used to be able to
+// write template deduction guides for the single-parameter Span constructor
+// below that will work if the value that is passed has a .data() method, and if
+// the data method does not return a void pointer.
+//
+// It is important to check for the void type specifically below, so the
+// deduction guides can be used in SFINAE contexts to check whether objects can
+// be converted to spans. If the deduction guides did not explicitly check for
+// void, and an object was passed that returned void* from data (like
+// std::vector<bool>), the template deduction would succeed, but the Span<void>
+// object instantiation would fail, resulting in a hard error, rather than a
+// SFINAE error.
+// https://stackoverflow.com/questions/68759148/sfinae-to-detect-the-explicitness-of-a-ctad-deduction-guide
+// https://stackoverflow.com/questions/16568986/what-happens-when-you-call-data-on-a-stdvectorbool
+template<typename T>
+using DataResult = std::remove_pointer_t<decltype(std::declval<T&>().data())>;
+
 // Deduction guides for Span
 // For the pointer/size based and iterator based constructor:
 template <typename T, typename EndOrSize> Span(T*, EndOrSize) -> Span<T>;
 // For the array constructor:
 template <typename T, std::size_t N> Span(T (&)[N]) -> Span<T>;
 // For the temporaries/rvalue references constructor, only supporting const output.
-template <typename T> Span(T&&) -> Span<std::enable_if_t<!std::is_lvalue_reference_v<T>, const std::remove_pointer_t<decltype(std::declval<T&&>().data())>>>;
+template <typename T> Span(T&&) -> Span<std::enable_if_t<!std::is_lvalue_reference_v<T> && !std::is_void_v<DataResult<T&&>>, const DataResult<T&&>>>;
 // For (lvalue) references, supporting mutable output.
-template <typename T> Span(T&) -> Span<std::remove_pointer_t<decltype(std::declval<T&>().data())>>;
+template <typename T> Span(T&) -> Span<std::enable_if_t<!std::is_void_v<DataResult<T&>>, DataResult<T&>>>;
+
+/** Pop the last element off a span, and return a reference to that element. */
+template <typename T>
+T& SpanPopBack(Span<T>& span)
+{
+    size_t size = span.size();
+    ASSERT_IF_DEBUG(size > 0);
+    T& back = span[size - 1];
+    span = Span<T>(span.data(), size - 1);
+    return back;
+}
+
+// From C++20 as_bytes and as_writeable_bytes
+template <typename T>
+Span<const std::byte> AsBytes(Span<T> s) noexcept
+{
+    return {reinterpret_cast<const std::byte*>(s.data()), s.size_bytes()};
+}
+template <typename T>
+Span<std::byte> AsWritableBytes(Span<T> s) noexcept
+{
+    return {reinterpret_cast<std::byte*>(s.data()), s.size_bytes()};
+}
+
+template <typename V>
+Span<const std::byte> MakeByteSpan(V&& v) noexcept
+{
+    return AsBytes(Span{std::forward<V>(v)});
+}
+template <typename V>
+Span<std::byte> MakeWritableByteSpan(V&& v) noexcept
+{
+    return AsWritableBytes(Span{std::forward<V>(v)});
+}
+
+// Helper functions to safely cast basic byte pointers to unsigned char pointers.
+inline unsigned char* UCharCast(char* c) { return reinterpret_cast<unsigned char*>(c); }
+inline unsigned char* UCharCast(unsigned char* c) { return c; }
+inline unsigned char* UCharCast(std::byte* c) { return reinterpret_cast<unsigned char*>(c); }
+inline const unsigned char* UCharCast(const char* c) { return reinterpret_cast<const unsigned char*>(c); }
+inline const unsigned char* UCharCast(const unsigned char* c) { return c; }
+inline const unsigned char* UCharCast(const std::byte* c) { return reinterpret_cast<const unsigned char*>(c); }
+// Helper concept for the basic byte types.
+template <typename B>
+concept BasicByte = requires { UCharCast(std::span<B>{}.data()); };
+
+// Helper function to safely convert a Span to a Span<[const] unsigned char>.
+template <typename T> constexpr auto UCharSpanCast(Span<T> s) -> Span<typename std::remove_pointer<decltype(UCharCast(s.data()))>::type> { return {UCharCast(s.data()), s.size()}; }
+
+/** Like the Span constructor, but for (const) unsigned char member types only. Only works for (un)signed char containers. */
+template <typename V> constexpr auto MakeUCharSpan(V&& v) -> decltype(UCharSpanCast(Span{std::forward<V>(v)})) { return UCharSpanCast(Span{std::forward<V>(v)}); }
 
 #endif // BITCOIN_SPAN_H
