@@ -12,6 +12,7 @@ This project is experimental and will change frequently. It's not stable.
 
 `FUZZ=miniscript_string ./bitcoinfuzz`
 
-# Bugs found by Bitcoinfuzz
+# Bugs/inconsistences/interesting stuff found by Bitcoinfuzz
 
 - sipa/miniscript: https://github.com/sipa/miniscript/issues/140
+- rust-miniscript: https://github.com/rust-bitcoin/rust-miniscript/issues/633
