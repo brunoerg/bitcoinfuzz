@@ -1,22 +1,26 @@
 // Copyright (c) 2009-2010 Satoshi Nakamoto
-// Copyright (c) 2009-2018 The Bitcoin Core developers
+// Copyright (c) 2009-present The Bitcoin Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
 #ifndef BITCOIN_SCRIPT_SCRIPT_H
 #define BITCOIN_SCRIPT_SCRIPT_H
 
+#include <attributes.h>
 #include <crypto/common.h>
-#include <prevector.h>
+#include <prevector.h> // IWYU pragma: export
 #include <serialize.h>
+#include <uint256.h>
+#include <util/hash_type.h>
 
-#include <assert.h>
-#include <climits>
+#include <cassert>
+#include <cstdint>
+#include <cstring>
 #include <limits>
 #include <stdexcept>
-#include <stdint.h>
-#include <string.h>
 #include <string>
+#include <type_traits>
+#include <utility>
 #include <vector>
 
 // Maximum number of bytes pushable to the stack
@@ -27,6 +31,9 @@ static const int MAX_OPS_PER_SCRIPT = 201;
 
 // Maximum number of public keys per multisig
 static const int MAX_PUBKEYS_PER_MULTISIG = 20;
+
+/** The limit of keys in OP_CHECKSIGADD-based scripts. It is due to the stack limit in BIP342. */
+static constexpr unsigned int MAX_PUBKEYS_PER_MULTI_A = 999;
 
 // Maximum script length in bytes
 static const int MAX_SCRIPT_SIZE = 10000;
@@ -43,6 +50,17 @@ static const unsigned int LOCKTIME_THRESHOLD = 500000000; // Tue Nov  5 00:53:20
 // checking is disabled (by setting all input sequence numbers to
 // SEQUENCE_FINAL).
 static const uint32_t LOCKTIME_MAX = 0xFFFFFFFFU;
+
+// Tag for input annex. If there are at least two witness elements for a transaction input,
+// and the first byte of the last element is 0x50, this last element is called annex, and
+// has meanings independent of the script
+static constexpr unsigned int ANNEX_TAG = 0x50;
+
+// Validation weight per passing signature (Tapscript only, see BIP 342).
+static constexpr int64_t VALIDATION_WEIGHT_PER_SIGOP_PASSED{50};
+
+// How much weight budget is added to the witness size (Tapscript only, see BIP 342).
+static constexpr int64_t VALIDATION_WEIGHT_OFFSET{50};
 
 template <typename T>
 std::vector<unsigned char> ToByteVector(const T& in)
@@ -187,13 +205,16 @@ enum opcodetype
     OP_NOP9 = 0xb8,
     OP_NOP10 = 0xb9,
 
+    // Opcode added by BIP 342 (Tapscript)
+    OP_CHECKSIGADD = 0xba,
+
     OP_INVALIDOPCODE = 0xff,
 };
 
 // Maximum value that an opcode can be
 static const unsigned int MAX_OPCODE = OP_NOP10;
 
-const char* GetOpName(opcodetype opcode);
+std::string GetOpName(opcodetype opcode);
 
 class scriptnum_error : public std::runtime_error
 {
@@ -331,7 +352,7 @@ public:
 
         std::vector<unsigned char> result;
         const bool neg = value < 0;
-        uint64_t absvalue = neg ? -value : value;
+        uint64_t absvalue = neg ? ~static_cast<uint64_t>(value) + 1 : static_cast<uint64_t>(value);
 
         while(absvalue)
         {
@@ -414,25 +435,21 @@ public:
     CScript(std::vector<unsigned char>::const_iterator pbegin, std::vector<unsigned char>::const_iterator pend) : CScriptBase(pbegin, pend) { }
     CScript(const unsigned char* pbegin, const unsigned char* pend) : CScriptBase(pbegin, pend) { }
 
-    ADD_SERIALIZE_METHODS;
+    SERIALIZE_METHODS(CScript, obj) { READWRITE(AsBase<CScriptBase>(obj)); }
 
-    template <typename Stream, typename Operation>
-    inline void SerializationOp(Stream& s, Operation ser_action) {
-        READWRITEAS(CScriptBase, *this);
-    }
-
-    CScript(int64_t b)        { operator<<(b); }
-
+    explicit CScript(int64_t b) { operator<<(b); }
     explicit CScript(opcodetype b)     { operator<<(b); }
     explicit CScript(const CScriptNum& b) { operator<<(b); }
     // delete non-existent constructor to defend against future introduction
     // e.g. via prevector
     explicit CScript(const std::vector<unsigned char>& b) = delete;
 
+    /** Delete non-existent operator to defend against future introduction */
+    CScript& operator<<(const CScript& b) = delete;
 
-    CScript& operator<<(int64_t b) { return push_int64(b); }
+    CScript& operator<<(int64_t b) LIFETIMEBOUND { return push_int64(b); }
 
-    CScript& operator<<(opcodetype opcode)
+    CScript& operator<<(opcodetype opcode) LIFETIMEBOUND
     {
         if (opcode < 0 || opcode > 0xff)
             throw std::runtime_error("CScript::operator<<(): invalid opcode");
@@ -440,13 +457,13 @@ public:
         return *this;
     }
 
-    CScript& operator<<(const CScriptNum& b)
+    CScript& operator<<(const CScriptNum& b) LIFETIMEBOUND
     {
         *this << b.getvch();
         return *this;
     }
 
-    CScript& operator<<(const std::vector<unsigned char>& b)
+    CScript& operator<<(const std::vector<unsigned char>& b) LIFETIMEBOUND
     {
         if (b.size() < OP_PUSHDATA1)
         {
@@ -475,15 +492,6 @@ public:
         return *this;
     }
 
-    CScript& operator<<(const CScript& b)
-    {
-        // I'm not sure if this should push the script or concatenate scripts.
-        // If there's ever a use for pushing a script onto a script, delete this member fn
-        assert(!"Warning: Pushing a CScript onto a CScript with << is probably not intended, use + to concatenate!");
-        return *this;
-    }
-
-
     bool GetOp(const_iterator& pc, opcodetype& opcodeRet, std::vector<unsigned char>& vchRet) const
     {
         return GetScriptOp(pc, end(), opcodeRet, &vchRet);
@@ -493,7 +501,6 @@ public:
     {
         return GetScriptOp(pc, end(), opcodeRet, nullptr);
     }
-
 
     /** Encode/decode small integers: */
     static int DecodeOP_N(opcodetype opcode)
@@ -571,6 +578,18 @@ struct CScriptWitness
     std::string ToString() const;
 };
 
+/** A reference to a CScript: the Hash160 of its serialization */
+class CScriptID : public BaseHash<uint160>
+{
+public:
+    CScriptID() : BaseHash() {}
+    explicit CScriptID(const CScript& in);
+    explicit CScriptID(const uint160& in) : BaseHash(in) {}
+};
+
+/** Test for OP_SUCCESSx opcodes as defined by BIP342. */
+bool IsOpSuccess(const opcodetype& opcode);
+
 bool CheckMinimalPush(const std::vector<unsigned char>& data, opcodetype opcode);
 
 /** Build a script by concatenating other scripts, or any argument accepted by CScript::operator<<. */
@@ -581,7 +600,6 @@ CScript BuildScript(Ts&&... inputs)
     int cnt{0};
 
     ([&ret, &cnt] (Ts&& input) {
-        cnt++;
         if constexpr (std::is_same_v<std::remove_cv_t<std::remove_reference_t<Ts>>, CScript>) {
             // If it is a CScript, extend ret with it. Move or copy the first element instead.
             if (cnt == 0) {
@@ -593,6 +611,7 @@ CScript BuildScript(Ts&&... inputs)
             // Otherwise invoke CScript::operator<<.
             ret << input;
         }
+        cnt++;
     } (std::forward<Ts>(inputs)), ...);
 
     return ret;

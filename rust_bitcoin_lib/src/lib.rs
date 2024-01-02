@@ -1,4 +1,4 @@
-use std::ffi::CStr;
+use std::ffi::{CStr, CString};
 use std::str::FromStr;
 use std::os::raw::c_char;
 
@@ -6,6 +6,17 @@ use miniscript::bitcoin::secp256k1::XOnlyPublicKey;
 use miniscript::{Miniscript, Segwitv0, Tap};
 use miniscript::bitcoin::{script, PublicKey};
 use miniscript::policy::Concrete;
+
+#[no_mangle]
+pub extern "C" fn rust_bitcoin_des_block(data: *const u8, len: usize) -> *mut std::os::raw::c_char {
+    let data_slice = unsafe { std::slice::from_raw_parts(data, len) };
+    let res: Result<bitcoin::blockdata::block::Block, _> =
+        bitcoin::consensus::encode::deserialize(data_slice);
+
+    if res.is_ok() { return CString::new(res.unwrap().block_hash().to_string()).unwrap().into_raw() };
+
+    return CString::new("").unwrap().into_raw()
+}
 
 #[no_mangle]
 pub extern "C" fn rust_miniscript_policy(input: *const c_char) -> bool {
