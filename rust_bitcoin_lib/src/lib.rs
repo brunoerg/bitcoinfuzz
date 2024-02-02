@@ -1,57 +1,84 @@
-use std::ffi::{CStr, CString};
-use std::str::FromStr;
+use std::ffi::CStr;
+use std::ffi::CString;
 use std::os::raw::c_char;
+use std::slice;
+use std::str::FromStr;
+use std::str::Utf8Error;
 
+use bitcoin::consensus::deserialize;
+use bitcoin::Block;
+use miniscript::bitcoin::script;
 use miniscript::bitcoin::secp256k1::XOnlyPublicKey;
-use miniscript::{Miniscript, Segwitv0, Tap};
-use miniscript::bitcoin::{script, PublicKey};
+use miniscript::bitcoin::PublicKey;
 use miniscript::policy::Concrete;
+use miniscript::Miniscript;
+use miniscript::Segwitv0;
+use miniscript::Tap;
 
-#[no_mangle]
-pub extern "C" fn rust_bitcoin_des_block(data: *const u8, len: usize) -> *mut std::os::raw::c_char {
-    let data_slice = unsafe { std::slice::from_raw_parts(data, len) };
-    let res: Result<bitcoin::blockdata::block::Block, _> =
-        bitcoin::consensus::encode::deserialize(data_slice);
+/// Creates a Rust str from a C string.
+///
+/// # Safety
+/// The caller must ensure that the pointer points to a zero-terminated C string.
+/// If the pointer is null, this function will panic. A non-zero terminated string
+/// will trigger undefined behavior.
+unsafe fn c_str_to_str<'a>(input: *const c_char) -> Result<&'a str, Utf8Error> {
+    CStr::from_ptr(input).to_str()
+}
 
-    if res.is_ok() { return CString::new(res.unwrap().block_hash().to_string()).unwrap().into_raw() };
-
-    return CString::new("").unwrap().into_raw()
+/// Creates a C string from a Rust str.
+///
+/// # Safety
+/// The caller must ensure that this memory is deallocated after the C string
+/// is no longer used. `into_raw` consumes the string and leaks the memory,
+/// making this allocation invisible to Rust's memory management.
+///
+/// This function panics if the input contains an internal null byte.
+unsafe fn str_to_c_string(input: &str) -> *mut c_char {
+    CString::new(input).unwrap().into_raw()
 }
 
 #[no_mangle]
-pub extern "C" fn rust_miniscript_policy(input: *const c_char) -> bool {
-    if let Ok(data) = unsafe { CStr::from_ptr(input) }.to_str() {
-        if let Ok(pol) = Concrete::<String>::from_str(data) {
-            return pol.is_valid().is_ok()
-        }
+pub unsafe extern "C" fn rust_bitcoin_des_block(data: *const u8, len: usize) -> *mut c_char {
+    let data_slice = std::slice::from_raw_parts(data, len);
+    let res = deserialize::<Block>(data_slice);
+
+    match res {
+        Ok(hash) => str_to_c_string(&hash.block_hash().to_string()),
+        Err(_) => str_to_c_string(""),
     }
-    false
 }
 
 #[no_mangle]
-pub extern "C" fn rust_miniscript_from_str(input: *const c_char) -> bool {
-    if let Ok(data) = unsafe { CStr::from_ptr(input) }.to_str() {
-        if let Ok(_pol) = Miniscript::<String, Segwitv0>::from_str(data) {
-            return true
-        } else if let Ok(_pol) = Miniscript::<String, Tap>::from_str(data) {
-            return true
-        }
+pub unsafe extern "C" fn rust_miniscript_policy(input: *const c_char) -> bool {
+    let Ok(input) = c_str_to_str(input) else {
+        return false;
+    };
+
+    Concrete::<String>::from_str(input).is_ok()
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rust_miniscript_from_str(input: *const c_char) -> bool {
+    let Ok(desc) = c_str_to_str(input) else {
+        return false;
+    };
+
+    match Miniscript::<String, Segwitv0>::from_str(desc) {
+        Err(_) => Miniscript::<String, Tap>::from_str(desc).is_ok(),
+        Ok(_) => true,
     }
-    false
 }
 
 #[no_mangle]
-pub extern "C" fn rust_miniscript_from_script(data: *const u8, len: usize) -> bool {
+pub unsafe extern "C" fn rust_miniscript_from_script(data: *const u8, len: usize) -> bool {
     // Safety: Ensure that the data pointer is valid for the given length
-    let data_slice = unsafe { std::slice::from_raw_parts(data, len) };
+    let data_slice = slice::from_raw_parts(data, len);
 
     let script = script::Script::from_bytes(data_slice);
+    let desc = Miniscript::<PublicKey, Segwitv0>::parse(&script);
 
-    if let Ok(_pt) = Miniscript::<PublicKey, Segwitv0>::parse(script) {
-        return true
-    } else if let Ok(_pt) = Miniscript::<XOnlyPublicKey, Tap>::parse(script) {
-        return true
+    match desc {
+        Err(_) => Miniscript::<XOnlyPublicKey, Tap>::parse(script).is_ok(),
+        Ok(_) => true,
     }
-
-    false
 }
