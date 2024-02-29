@@ -11,4 +11,4 @@ crate-type = ["cdylib"]
 
 [dependencies]
 bitcoin = "0.31.0"
-miniscript = "10.0.0"
+miniscript = "11.0.0"
