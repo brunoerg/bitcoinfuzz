@@ -14,7 +14,7 @@ bool BlockDesCore(Span<const uint8_t> buffer)
     DataStream ds{buffer};
     CBlock block;
     try {
-        ds >> TX_WITH_WITNESS(block);
+        ds >> TX_NO_WITNESS(block);
         //block.GetHash();
     } catch (const std::ios_base::failure&) {
         return false;
