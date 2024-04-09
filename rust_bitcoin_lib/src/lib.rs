@@ -5,7 +5,7 @@ use std::slice;
 use std::str::FromStr;
 use std::str::Utf8Error;
 
-use bitcoin::consensus::deserialize;
+use bitcoin::consensus::deserialize_partial;
 use bitcoin::Block;
 use miniscript::bitcoin::script;
 use miniscript::bitcoin::secp256k1::XOnlyPublicKey;
@@ -40,10 +40,10 @@ unsafe fn str_to_c_string(input: &str) -> *mut c_char {
 #[no_mangle]
 pub unsafe extern "C" fn rust_bitcoin_des_block(data: *const u8, len: usize) -> *mut c_char {
     let data_slice = std::slice::from_raw_parts(data, len);
-    let res = deserialize::<Block>(data_slice);
+    let res = deserialize_partial::<Block>(data_slice);
 
     match res {
-        Ok(hash) => str_to_c_string(&hash.block_hash().to_string()),
+        Ok(block) => str_to_c_string(&block.0.block_hash().to_string()),
         Err(_) => str_to_c_string(""),
     }
 }
