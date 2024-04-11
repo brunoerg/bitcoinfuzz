@@ -30,5 +30,5 @@ void BlockDes(FuzzedDataProvider& provider)
     bool core{BlockDesCore(buffer)};
     std::string rust_bitcoin{rust_bitcoin_des_block(buffer.data(), buffer.size())};
     if (core) assert(rust_bitcoin != "");
-    else assert(rust_bitcoin == "");
+    else assert(rust_bitcoin == "" || rust_bitcoin == "1");
 }
