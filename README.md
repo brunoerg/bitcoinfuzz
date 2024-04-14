@@ -18,3 +18,4 @@ Note this project is a WIP and might be not stable.
 
 - sipa/miniscript: https://github.com/sipa/miniscript/issues/140
 - rust-miniscript: https://github.com/rust-bitcoin/rust-miniscript/issues/633
+- rust-bitcoin: https://github.com/rust-bitcoin/rust-bitcoin/issues/2681
