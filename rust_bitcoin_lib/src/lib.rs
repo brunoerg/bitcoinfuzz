@@ -5,6 +5,7 @@ use std::slice;
 use std::str::FromStr;
 use std::str::Utf8Error;
 
+use bitcoin::bip152::PrefilledTransaction;
 use bitcoin::consensus::deserialize_partial;
 use bitcoin::Block;
 use miniscript::bitcoin::script;
@@ -50,6 +51,22 @@ pub unsafe extern "C" fn rust_bitcoin_des_block(data: *const u8, len: usize) -> 
             }
             str_to_c_string("")
         },
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rust_bitcoin_prefilledtransaction(data: *const u8, len: usize) -> *mut c_char {
+    let data_slice = std::slice::from_raw_parts(data, len);
+    let res = deserialize_partial::<PrefilledTransaction>(data_slice);
+
+    match res {
+        Ok(tx) => str_to_c_string(&tx.0.idx.to_string()),
+        Err(err) => {
+            if err.to_string().starts_with("unsupported segwit version") {
+                return str_to_c_string("unsupported segwit version")
+            }
+            str_to_c_string("")
+        }
     }
 }
 
