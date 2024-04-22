@@ -1,2 +1,5 @@
 bitcoinfuzz
 */target/
+crash-*
+leak-*
+timeout-*
