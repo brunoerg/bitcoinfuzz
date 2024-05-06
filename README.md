@@ -6,7 +6,7 @@ Note this project is a WIP and might be not stable.
 
 # Build
 
-`cd rust_bitcoin_lib && cargo build --release && cd .. && make`
+`make`
 
 # Running
 
