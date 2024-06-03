@@ -8,6 +8,7 @@
 #include "../bitcoin/streams.h"
 
 extern "C" char* rust_bitcoin_des_block(const uint8_t *data, size_t len);
+extern "C" char* go_btcd_des_block(uint8_t *data, size_t len);
 
 bool BlockDesCore(Span<const uint8_t> buffer)
 {
@@ -29,7 +30,9 @@ void BlockDes(FuzzedDataProvider& provider)
     // TODO: Compare the `block hash`
     bool core{BlockDesCore(buffer)};
     std::string rust_bitcoin{rust_bitcoin_des_block(buffer.data(), buffer.size())};
+    std::string go_btcd{go_btcd_des_block(buffer.data(), buffer.size())};
+
     if (rust_bitcoin == "unsupported segwit version") return;
-    if (core) assert(rust_bitcoin != "");
-    else assert(rust_bitcoin == "");
+    if (core) assert(rust_bitcoin != "" || go_btcd != "");
+    else assert(rust_bitcoin == "" || go_btcd == "");
 }
