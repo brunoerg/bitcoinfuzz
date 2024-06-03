@@ -1,3 +1,6 @@
 [submodule "dependencies/btcd"]
 	path = dependencies/btcd
 	url = https://github.com/btcsuite/btcd
+[submodule "dependencies/rust-bitcoin"]
+	path = dependencies/rust-bitcoin
+	url = https://github.com/rust-bitcoin/rust-bitcoin
