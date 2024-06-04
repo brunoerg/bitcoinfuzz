@@ -10,6 +10,7 @@
 #include "targets/miniscript_string.h"
 #include "targets/block_des.h"
 #include "targets/prefilledtransaction.h"
+#include "targets/tx_des.h"
 
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size) {
     FuzzedDataProvider provider(data, size);
@@ -23,6 +24,8 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size) {
         BlockDes(provider);
     } else if (target == "prefilledtransaction") {
         PrefilledTransactionTarget(provider);
+    } else if (target == "tx_deserialization") {
+        TransactionDes(provider);
     } else {
       std::exit(EXIT_SUCCESS);
     }

@@ -1,5 +1,5 @@
-HEADERS :=  $(wildcard $(shell find bitcoin -type f -name '*.h')) compiler.h targets/miniscript_policy.h targets/miniscript_string.h targets/block_des.h targets/prefilledtransaction.h
-SOURCES :=  $(wildcard $(shell find bitcoin -type f -name '*.cpp')) compiler.cpp targets/miniscript_policy.cpp targets/miniscript_string.cpp targets/block_des.cpp targets/prefilledtransaction.cpp
+HEADERS :=  $(wildcard $(shell find bitcoin -type f -name '*.h')) compiler.h targets/tx_des.h targets/miniscript_policy.h targets/miniscript_string.h targets/block_des.h targets/prefilledtransaction.h
+SOURCES :=  $(wildcard $(shell find bitcoin -type f -name '*.cpp')) compiler.cpp targets/tx_des.cpp targets/miniscript_policy.cpp targets/miniscript_string.cpp targets/block_des.cpp targets/prefilledtransaction.cpp
 UNAME_S :=  $(shell uname -s)
 
 bitcoinfuzz: cargo go $(HEADERS) $(SOURCES) fuzzer.cpp
