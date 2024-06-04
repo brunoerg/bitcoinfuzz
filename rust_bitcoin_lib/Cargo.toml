@@ -10,5 +10,12 @@ crate-type = ["cdylib"]
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-bitcoin = "0.31.0"
+bitcoin = { path = "../dependencies/rust-bitcoin/bitcoin" }
 miniscript = "11.0.0"
+
+[patch.crates-io]
+base58ck = { path = "../dependencies/rust-bitcoin/base58" }
+bitcoin-io = { path = "../dependencies/rust-bitcoin/io" }
+bitcoin-internals = { path = "../dependencies/rust-bitcoin/internals" }
+bitcoin-units = { path = "../dependencies/rust-bitcoin/units" }
+bitcoin_hashes = { path = "../dependencies/rust-bitcoin/hashes" }

@@ -1,17 +1,34 @@
 # bitcoinfuzz
 
 Differential Fuzzing of Bitcoin implementations and libraries.
-It currently supports `Bitcoin Core`, `rust-bitcoin` and `rust-miniscript`.
+It currently supports `Bitcoin Core`, `btcd`, `rust-bitcoin` and `rust-miniscript`.
 Note this project is a WIP and might be not stable.
 
-# Build
+# Installation
 
-`make`
+First clone the repo and open it using:
 
-# Running
+```bash
+git clone --recursive https://github.com/brunoerg/bitcoinfuzz && cd bitcoinfuzz
+```
 
-`FUZZ=target_name ./bitcoinfuzz`
+Next update the submodules:
 
+```bash
+git submodule update
+```
+
+Now, you can build the project by running:
+
+```bash
+make
+```
+
+Once the compilation is complete bitcoinfuzz can be executed by:
+
+```bash
+FUZZ=target_name ./bitcoinfuzz
+```
 
 -------------------------------------------
 ### Bugs/inconsistences found by Bitcoinfuzz
