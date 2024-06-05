@@ -15,8 +15,10 @@
 
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size) {
     FuzzedDataProvider provider(data, size);
-    std::string target{std::getenv("FUZZ")}; 
-    
+
+    char *t = std::getenv("FUZZ");
+    std::string target = t ? t : ""; 
+
     if (target == "miniscript_policy") {
         MiniscriptPolicy(provider);
     } else if (target == "miniscript_string") {
@@ -29,9 +31,7 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size) {
         TransactionDes(provider);
     } else if (target == "bech32") {
         Bech32(provider);
-    } else {
-      std::exit(EXIT_SUCCESS);
     }
-    
+
     return 0; // Values other than 0 and -1 are reserved for future use.
 }
