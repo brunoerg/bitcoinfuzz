@@ -11,6 +11,7 @@
 #include "targets/block_des.h"
 #include "targets/prefilledtransaction.h"
 #include "targets/tx_des.h"
+#include "targets/bech32.h"
 
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size) {
     FuzzedDataProvider provider(data, size);
@@ -26,6 +27,8 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size) {
         PrefilledTransactionTarget(provider);
     } else if (target == "tx_deserialization") {
         TransactionDes(provider);
+    } else if (target == "bech32") {
+        Bech32(provider);
     } else {
       std::exit(EXIT_SUCCESS);
     }
