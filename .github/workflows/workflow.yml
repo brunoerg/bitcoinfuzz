@@ -1,0 +1,53 @@
+name: Check
+
+on: [push]
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install rust-toolchain
+        uses: actions-rs/toolchain@v1.0.6
+        with:
+          toolchain: stable
+
+      - name: Install go
+        uses: actions/setup-go@v5
+        with:
+          go-version: 'stable'
+
+      - name: Install LLVM and Clang
+        run: |
+          if [ "$RUNNER_OS" == "Linux" ]; then
+                sudo apt install llvm clang -y
+          elif [ "$RUNNER_OS" == "macOS" ]; then
+                brew install llvm
+          fi
+        shell: bash
+
+      - name: Build
+        timeout-minutes: 10
+        run: |
+          if [ "$RUNNER_OS" == "macOS" ]; then
+                export PATH=/usr/local/bin:$PATH
+                export CC=clang
+                export CXX=clang++
+                export LDFLAGS="-L/usr/local/opt/llvm/lib -Wl,-rpath,/usr/local/opt/llvm/lib"
+                export PATH="$(brew --prefix)/opt/llvm/bin:$PATH"
+          fi
+
+          make -j4
+
+      - name: Test
+        run: ./bitcoinfuzz -detect_leaks=0 -runs=0
