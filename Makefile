@@ -21,7 +21,8 @@ cargo:
 	cd rust_bitcoin_lib && cargo build --release && cd ..
 
 go:
-	cd btcd_lib && go build -o libbtcd_wrapper.a -buildmode=c-archive wrapper.go
+	cd dependencies/btcd/wire && go build -tags=libfuzzer -gcflags=all=-d=libfuzzer .
+	cd btcd_lib && go build -o libbtcd_wrapper.a -buildmode=c-archive -tags=libfuzzer -gcflags=all=-d=libfuzzer wrapper.go
 
 clean:
 	rm -f bitcoinfuzz $(OBJS) btcd_lib/libbtcd_wrapper.*
