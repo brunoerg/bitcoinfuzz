@@ -32,14 +32,6 @@ void BlockDes(FuzzedDataProvider& provider)
     std::string rust_bitcoin{rust_bitcoin_des_block(buffer.data(), buffer.size())};
     std::string go_btcd{go_btcd_des_block(buffer.data(), buffer.size())};
 
-    // Uncomment this to print the block hashes
-    //std::cout << "Core: " << core << "\n";
-    //std::cout << "Rust: " << rust_bitcoin << "\n";
-    //std::cout << "Go: " << go_btcd << "\n";
-
     if (rust_bitcoin == "unsupported segwit version") return;
-    if (core != "") assert(rust_bitcoin != "" || go_btcd != "");
-    else assert(rust_bitcoin == "" || go_btcd == "");
-
     assert(go_btcd == rust_bitcoin && rust_bitcoin == core);
 }
