@@ -41,5 +41,5 @@ FUZZ=target_name ./bitcoinfuzz
 
 - sipa/miniscript: https://github.com/sipa/miniscript/issues/140
 - rust-miniscript: https://github.com/rust-bitcoin/rust-miniscript/issues/633
-- rust-bitcoin: https://github.com/rust-bitcoin/rust-bitcoin/issues/268
+- rust-bitcoin: https://github.com/rust-bitcoin/rust-bitcoin/issues/2681
 - btcd: https://github.com/btcsuite/btcd/issues/2195
