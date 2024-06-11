@@ -24,6 +24,12 @@ Now, you can build the project by running:
 make
 ```
 
+It is also possible to target a specific commit or tag of the dependencies during compilation:
+
+```bash
+make BTCD=v0.24.0 RUST_BITCOIN=aedb097
+```
+
 Once the compilation is complete bitcoinfuzz can be executed by:
 
 ```bash
@@ -35,5 +41,5 @@ FUZZ=target_name ./bitcoinfuzz
 
 - sipa/miniscript: https://github.com/sipa/miniscript/issues/140
 - rust-miniscript: https://github.com/rust-bitcoin/rust-miniscript/issues/633
-- rust-bitcoin: https://github.com/rust-bitcoin/rust-bitcoin/issues/268
+- rust-bitcoin: https://github.com/rust-bitcoin/rust-bitcoin/issues/2681
 - btcd: https://github.com/btcsuite/btcd/issues/2195

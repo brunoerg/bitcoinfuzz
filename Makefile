@@ -10,7 +10,7 @@ ifeq ($(UNAME_S),Darwin)
 LDFLAGS += -framework CoreFoundation -Wl,-ld_classic
 endif
 
-bitcoinfuzz: $(OBJS) cargo go
+bitcoinfuzz: set $(OBJS) cargo go
 	$(CXX) fuzzer.cpp -o $@ $(OBJS) $(CXXFLAGS) $(LDFLAGS)
 
 $(OBJS) : build/%.o: %.cpp
@@ -31,3 +31,7 @@ go:
 clean:
 	rm -f bitcoinfuzz $(OBJS) btcd_lib/libbtcd_wrapper.*
 	rm -Rdf rust_bitcoin_lib/target
+
+set:
+	@$(if $(strip $(BTCD)), cd dependencies/btcd && git fetch origin master && git checkout $(BTCD))
+	@$(if $(strip $(RUST_BITCOIN)), cd dependencies/rust-bitcoin && git fetch origin master && git checkout $(RUST_BITCOIN))
