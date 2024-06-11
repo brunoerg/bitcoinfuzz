@@ -4,3 +4,4 @@ libbtcd_wrapper.*
 crash-*
 leak-*
 timeout-*
+build/
