@@ -24,6 +24,12 @@ Now, you can build the project by running:
 make
 ```
 
+It is also possible to target a specific commit or tag of the dependencies during compilation:
+
+```bash
+make BTCD=v0.24.0 RUST_BITCOIN=aedb097
+```
+
 Once the compilation is complete bitcoinfuzz can be executed by:
 
 ```bash
