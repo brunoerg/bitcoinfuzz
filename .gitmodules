@@ -4,3 +4,6 @@
 [submodule "dependencies/rust-bitcoin"]
 	path = dependencies/rust-bitcoin
 	url = https://github.com/rust-bitcoin/rust-bitcoin
+[submodule "dependencies/rust-miniscript"]
+	path = dependencies/rust-miniscript
+	url = https://github.com/rust-bitcoin/rust-miniscript

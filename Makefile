@@ -35,3 +35,4 @@ clean:
 set:
 	@$(if $(strip $(BTCD)), cd dependencies/btcd && git fetch origin master && git checkout $(BTCD))
 	@$(if $(strip $(RUST_BITCOIN)), cd dependencies/rust-bitcoin && git fetch origin master && git checkout $(RUST_BITCOIN))
+	@$(if $(strip $(RUST_MINISCRIPT)), cd dependencies/rust-miniscript && git fetch origin master && git checkout $(RUST_MINISCRIPT))
