@@ -6,7 +6,6 @@
 
 #include <fuzzer/FuzzedDataProvider.h>
 
-#include "targets/miniscript_policy.h"
 #include "targets/miniscript_string.h"
 #include "targets/block_des.h"
 #include "targets/prefilledtransaction.h"
@@ -19,9 +18,7 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size) {
     char *t = std::getenv("FUZZ");
     std::string target = t ? t : ""; 
 
-    if (target == "miniscript_policy") {
-        MiniscriptPolicy(provider);
-    } else if (target == "miniscript_string") {
+    if (target == "miniscript_string") {
         MiniscriptFromString(provider);
     } else if (target == "block_deserialization") {
         BlockDes(provider);
