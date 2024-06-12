@@ -12,6 +12,7 @@ use miniscript::bitcoin::script;
 use miniscript::bitcoin::secp256k1::XOnlyPublicKey;
 use miniscript::bitcoin::PublicKey;
 use miniscript::policy::Concrete;
+use miniscript::DescriptorPublicKey;
 use miniscript::Miniscript;
 use miniscript::Segwitv0;
 use miniscript::Tap;
@@ -71,22 +72,13 @@ pub unsafe extern "C" fn rust_bitcoin_prefilledtransaction(data: *const u8, len:
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rust_miniscript_policy(input: *const c_char) -> bool {
-    let Ok(input) = c_str_to_str(input) else {
-        return false;
-    };
-
-    Concrete::<String>::from_str(input).is_ok()
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn rust_miniscript_from_str(input: *const c_char) -> bool {
     let Ok(desc) = c_str_to_str(input) else {
         return false;
     };
 
-    match Miniscript::<String, Segwitv0>::from_str(desc) {
-        Err(_) => Miniscript::<String, Tap>::from_str(desc).is_ok(),
+    match Miniscript::<DescriptorPublicKey, Segwitv0>::from_str(desc) {
+        Err(_) => Miniscript::<DescriptorPublicKey, Tap>::from_str(desc).is_ok(),
         Ok(_) => true,
     }
 }
