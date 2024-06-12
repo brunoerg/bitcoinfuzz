@@ -11,7 +11,7 @@ crate-type = ["staticlib"]
 
 [dependencies]
 bitcoin = { path = "../dependencies/rust-bitcoin/bitcoin" }
-miniscript = "11.0.0"
+miniscript = { path = "../dependencies/rust-miniscript" }
 
 [patch.crates-io]
 base58ck = { path = "../dependencies/rust-bitcoin/base58" }
