@@ -11,7 +11,6 @@ use bitcoin::Block;
 use miniscript::bitcoin::script;
 use miniscript::bitcoin::secp256k1::XOnlyPublicKey;
 use miniscript::bitcoin::PublicKey;
-use miniscript::policy::Concrete;
 use miniscript::DescriptorPublicKey;
 use miniscript::Miniscript;
 use miniscript::Segwitv0;
