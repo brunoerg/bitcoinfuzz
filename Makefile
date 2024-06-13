@@ -3,14 +3,16 @@ HEADERS :=  $(wildcard $(shell find bitcoin -type f -name '*.h')) targets/bech32
 SOURCES :=  $(wildcard $(shell find bitcoin -type f -name '*.cpp')) targets/bech32.cpp targets/tx_des.cpp targets/miniscript_string.cpp targets/block_des.cpp targets/prefilledtransaction.cpp
 OBJS    :=  $(patsubst %.cpp, build/%.o, $(SOURCES))
 UNAME_S :=  $(shell uname -s)
-CXXFLAGS := -O3 -g0 -Wall -fsanitize=fuzzer -DHAVE_GMTIME_R=1 -std=c++20 -march=native -Ibitcoin
-LDFLAGS :=  -L rust_bitcoin_lib/target/debug -L btcd_lib -lbtcd_wrapper -lrust_bitcoin_lib -lpthread -ldl
+INCLUDE_DIR = bitcoin/secp256k1/include
+LIB_DIR = bitcoin/secp256k1/.libs
+CXXFLAGS := -O3 -g0 -Wall -fsanitize=fuzzer -DHAVE_GMTIME_R=1 -std=c++20 -march=native -Ibitcoin -I$(INCLUDE_DIR)
+LDFLAGS :=  -L rust_bitcoin_lib/target/debug -L btcd_lib -lbtcd_wrapper -lrust_bitcoin_lib -lpthread -ldl -L$(LIB_DIR) -lsecp256k1
 
 ifeq ($(UNAME_S),Darwin)
 LDFLAGS += -framework CoreFoundation -Wl,-ld_classic
 endif
 
-bitcoinfuzz: set $(OBJS) cargo go
+bitcoinfuzz: set $(OBJS) libsecp256 cargo go
 	$(CXX) fuzzer.cpp -o $@ $(OBJS) $(CXXFLAGS) $(LDFLAGS)
 
 $(OBJS) : build/%.o: %.cpp
@@ -23,6 +25,14 @@ cargo:
 	-C llvm-args='-sanitizer-coverage-trace-compares' \
 	-C llvm-args='-sanitizer-coverage-pc-table' \
 	-C llvm-args='-sanitizer-coverage-level=3'
+
+libsecp256:
+	cd bitcoin/secp256k1 && \
+    (test ! -f "Makefile" && \
+    ./autogen.sh && \
+    ./configure --enable-module-schnorrsig --enable-benchmark=no --enable-module-recovery \
+    --enable-static --disable-shared --enable-tests=no --enable-ctime-tests=no --enable-benchmark=no) || : \
+    cd bitcoin/secp256k1 && make
 
 go:
 	cd dependencies/btcd/wire && go build -tags=libfuzzer -gcflags=all=-d=libfuzzer .
