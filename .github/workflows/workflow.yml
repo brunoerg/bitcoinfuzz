@@ -30,9 +30,12 @@ jobs:
       - name: Install LLVM and Clang
         run: |
           if [ "$RUNNER_OS" == "Linux" ]; then
-                sudo apt install llvm clang -y
+                wget https://apt.llvm.org/llvm.sh
+                chmod +x llvm.sh
+                sudo ./llvm.sh 18
+                sudo ln -sfT clang++-18 /usr/bin/clang++
           elif [ "$RUNNER_OS" == "macOS" ]; then
-                brew install llvm
+                brew install llvm autoconf automake libtool
           fi
         shell: bash
 
@@ -43,7 +46,6 @@ jobs:
                 export PATH=/usr/local/bin:$PATH
                 export CC=clang
                 export CXX=clang++
-                export LDFLAGS="-L/usr/local/opt/llvm/lib -Wl,-rpath,/usr/local/opt/llvm/lib"
                 export PATH="$(brew --prefix)/opt/llvm/bin:$PATH"
           fi
 
