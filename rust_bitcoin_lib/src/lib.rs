@@ -11,7 +11,6 @@ use bitcoin::Block;
 use miniscript::bitcoin::script;
 use miniscript::bitcoin::secp256k1::XOnlyPublicKey;
 use miniscript::bitcoin::PublicKey;
-use miniscript::DescriptorPublicKey;
 use miniscript::Miniscript;
 use miniscript::Segwitv0;
 use miniscript::Tap;
@@ -76,8 +75,8 @@ pub unsafe extern "C" fn rust_miniscript_from_str(input: *const c_char) -> bool 
         return false;
     };
 
-    match Miniscript::<DescriptorPublicKey, Segwitv0>::from_str(desc) {
-        Err(_) => Miniscript::<DescriptorPublicKey, Tap>::from_str(desc).is_ok(),
+    match Miniscript::<String, Segwitv0>::from_str(desc) {
+        Err(_) => Miniscript::<String, Tap>::from_str(desc).is_ok(),
         Ok(_) => true,
     }
 }
