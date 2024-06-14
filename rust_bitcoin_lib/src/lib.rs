@@ -82,6 +82,31 @@ pub unsafe extern "C" fn rust_miniscript_from_str(input: *const c_char) -> bool 
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn rust_miniscript_from_str_check_key(input: *const c_char) -> *mut c_char {
+    let Ok(desc) = c_str_to_str(input) else {
+        return str_to_c_string("0");
+    };
+
+    match Miniscript::<PublicKey, Segwitv0>::from_str(desc) {
+        Err(err) => {
+            if err == miniscript::Error::MaxRecursiveDepthExceeded {
+                return str_to_c_string("maxrecursive")
+            }
+            match Miniscript::<PublicKey, Tap>::from_str(desc) {
+                Err(err) => {
+                    if err == miniscript::Error::MaxRecursiveDepthExceeded {
+                        return str_to_c_string("maxrecursive")
+                    }
+                    str_to_c_string("0")
+                },
+                Ok(_) => str_to_c_string("1")
+            }
+        },
+        Ok(_) => str_to_c_string("1"),
+    }
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn rust_miniscript_from_script(data: *const u8, len: usize) -> bool {
     // Safety: Ensure that the data pointer is valid for the given length
     let data_slice = slice::from_raw_parts(data, len);
