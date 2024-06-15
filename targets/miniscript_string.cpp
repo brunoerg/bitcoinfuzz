@@ -40,6 +40,7 @@ struct TestData {
 
     TestData()
     {
+        static ECC_Context ctx;
         // All our signatures sign (and are required to sign) this constant message.
         auto const MESSAGE_HASH = uint256S("f5cd94e18b6fe77dd7aca9e35c2b0c9cbd86356c80a71065");
         // We don't pass additional randomness when creating a schnorr signature.
@@ -94,7 +95,7 @@ struct TestData {
 };
 
 //! Global TestData object
-std::unique_ptr<const TestData> g_testdata;
+std::unique_ptr<const TestData> g_testdata(new TestData());
 
 struct KeyConverter {
     typedef CPubKey Key;
@@ -185,7 +186,6 @@ bool BitcoinCoreString(const std::string& input_str)
 
 void MiniscriptFromString(FuzzedDataProvider& provider) 
 {
-    g_testdata.reset();
     std::string input_str{provider.ConsumeRemainingBytesAsString().c_str()};
     const bool core{BitcoinCoreString(input_str)};
     const std::string rust_miniscript{rust_miniscript_from_str_check_key(input_str.c_str())};
