@@ -35,7 +35,7 @@ bitcoin:
 	cd dependencies/bitcoin && \
 	(test ! -f "Makefile" && \
 	./autogen.sh &&  \
-	CXX=$(CXX) CC=$(CC) ./configure --with-daemon=no --disable-wallet --disable-tests --disable-gui-tests --disable-bench \
+	CXX=$(CXX) CC=$(CC) ./configure --with-daemon=no --disable-wallet --disable-tests --disable-gui-tests --with-gui=no --disable-bench \
 	--with-utils=no --enable-static --disable-hardening --disable-shared --with-experimental-kernel-lib --with-sanitizers=fuzzer) || :
 	cd dependencies/bitcoin && $(MAKE)
 
