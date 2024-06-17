@@ -1,20 +1,23 @@
 CXX      =  clang++
-SOURCES :=  $(wildcard $(shell find bitcoin -type f -name '*.cpp')) targets/bech32.cpp targets/tx_des.cpp targets/miniscript_string.cpp targets/block_des.cpp targets/prefilledtransaction.cpp
-INCLUDES =  bitcoin bitcoin/secp256k1/include
-LIB_DIR  =  bitcoin/secp256k1/.libs rust_bitcoin_lib/target/debug btcd_lib
+CC       =  clang
+SOURCES :=  targets/bech32.cpp targets/tx_des.cpp targets/miniscript_string.cpp targets/block_des.cpp targets/prefilledtransaction.cpp
+INCLUDES =  dependencies/ dependencies/bitcoin/src/ dependencies/bitcoin/src/secp256k1/include
+LIB_DIR  =  dependencies/bitcoin/src/ dependencies/bitcoin/src/.libs dependencies/bitcoin/src/secp256k1/.libs rust_bitcoin_lib/target/debug btcd_lib
 OBJS    :=  $(patsubst %.cpp, build/%.o, $(SOURCES))
 UNAME_S :=  $(shell uname -s)
 INCPATHS:=  $(foreach dir,$(INCLUDES),-I$(dir))
 LIBPATHS:=  $(foreach lib,$(LIB_DIR),-L$(lib))
 CXXFLAGS:=  -O3 -g0 -Wall -fsanitize=fuzzer -DHAVE_GMTIME_R=1 -std=c++20 -march=native $(INCPATHS)
 ORIGLDFLAGS := $(LDFLAGS) # need to save a copy of ld flags as these get modified below
-LDFLAGS :=  $(LIBPATHS) -lbtcd_wrapper -lrust_bitcoin_lib -lsecp256k1 -lpthread -ldl
+LDFLAGS :=  $(LIBPATHS) -lbtcd_wrapper -lrust_bitcoin_lib -lbitcoin_common -lbitcoin_util -lbitcoinkernel -lsecp256k1 -lpthread -ldl
 
 ifeq ($(UNAME_S),Darwin)
 LDFLAGS += -framework CoreFoundation -Wl,-ld_classic
 endif
 
-bitcoinfuzz: set $(OBJS) libsecp256 cargo go
+.PHONY: bitcoinfuzz bitcoin cargo go clean
+
+bitcoinfuzz: set $(OBJS) bitcoin cargo go
 	$(CXX) fuzzer.cpp -o $@ $(OBJS) $(CXXFLAGS) $(LDFLAGS)
 
 $(OBJS) : build/%.o: %.cpp
@@ -28,13 +31,13 @@ cargo:
 	-C llvm-args='-sanitizer-coverage-pc-table' \
 	-C llvm-args='-sanitizer-coverage-level=3'
 
-libsecp256:
-	cd bitcoin/secp256k1 && \
+bitcoin:
+	cd dependencies/bitcoin && \
 	(test ! -f "Makefile" && \
-	./autogen.sh && \
-	LDFLAGS=$(ORIGLDFLAGS) ./configure --enable-module-schnorrsig --enable-benchmark=no --enable-module-recovery \
-	--enable-static --disable-shared --enable-tests=no --enable-ctime-tests=no --enable-benchmark=no) || :
-	cd bitcoin/secp256k1 && make
+	./autogen.sh &&  \
+	CXX=$(CXX) CC=$(CC) ./configure --with-daemon=no --disable-wallet --disable-tests --disable-gui-tests --disable-bench \
+	--with-utils=no --enable-static --disable-hardening --disable-shared --with-experimental-kernel-lib --with-sanitizers=fuzzer) || :
+	cd dependencies/bitcoin && $(MAKE)
 
 go:
 	cd dependencies/btcd/wire && go build -tags=libfuzzer -gcflags=all=-d=libfuzzer .
@@ -43,8 +46,10 @@ go:
 clean:
 	rm -f bitcoinfuzz $(OBJS) btcd_lib/libbtcd_wrapper.*
 	rm -Rdf rust_bitcoin_lib/target
+	cd dependencies/bitcoin && git clean -fxd
 
 set:
+	@$(if $(strip $(CORE)), cd dependencies/bitcoin && git fetch origin && git checkout $(CORE))
 	@$(if $(strip $(BTCD)), cd dependencies/btcd && git fetch origin && git checkout $(BTCD))
 	@$(if $(strip $(RUST_BITCOIN)), cd dependencies/rust-bitcoin && git fetch origin && git checkout $(RUST_BITCOIN))
 	@$(if $(strip $(RUST_MINISCRIPT)), cd dependencies/rust-miniscript && git fetch origin && git checkout $(RUST_MINISCRIPT))

@@ -34,22 +34,32 @@ jobs:
                 chmod +x llvm.sh
                 sudo ./llvm.sh 18
                 sudo ln -sfT clang++-18 /usr/bin/clang++
+                sudo ln -sfT clang-18 /usr/bin/clang
           elif [ "$RUNNER_OS" == "macOS" ]; then
                 brew install llvm autoconf automake libtool
           fi
         shell: bash
 
+      - name: Install Boost
+        run: |
+          if [ "$RUNNER_OS" == "Linux" ]; then
+                sudo apt install libboost-all-dev
+          elif [ "$RUNNER_OS" == "macOS" ]; then
+                brew install boost
+          fi
+
       - name: Build
-        timeout-minutes: 10
+        timeout-minutes: 20
         run: |
           if [ "$RUNNER_OS" == "macOS" ]; then
                 export PATH=/usr/local/bin:$PATH
                 export CC=clang
                 export CXX=clang++
                 export PATH="$(brew --prefix)/opt/llvm/bin:$PATH"
+                make
+          else
+                make -j$(nproc)
           fi
-
-          make -j4
 
       - name: Test
         run: ./bitcoinfuzz -detect_leaks=0 -runs=0

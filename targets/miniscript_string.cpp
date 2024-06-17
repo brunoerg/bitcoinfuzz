@@ -4,8 +4,8 @@
 #include <script/miniscript.h>
 
 #include "miniscript_string.h"
-#include "../bitcoin/pubkey.h"
-#include "../bitcoin/key.h"
+#include "bitcoin/src/pubkey.h"
+#include "bitcoin/src/key.h"
 
 extern "C" bool rust_miniscript_from_str(const char* miniscript_str);
 extern "C" char* rust_miniscript_from_str_check_key(const char* miniscript_str);

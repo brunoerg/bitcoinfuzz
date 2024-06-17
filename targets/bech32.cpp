@@ -4,8 +4,8 @@
 #include <stdio.h>
 
 #include "bech32.h"
-#include "../bitcoin/bech32.h"
-#include "../bitcoin/streams.h"
+#include "bitcoin/src/bech32.h"
+#include "bitcoin/src/streams.h"
 
 extern "C" char* go_btcd_bech32(uint8_t *data, size_t len);
 

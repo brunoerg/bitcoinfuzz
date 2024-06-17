@@ -3,8 +3,8 @@
 #include <iostream>
 #include <stdio.h>
 
-#include "../bitcoin/blockencodings.h"
-#include "../bitcoin/streams.h"
+#include "bitcoin/src/blockencodings.h"
+#include "bitcoin/src/streams.h"
 
 extern "C" char* rust_bitcoin_prefilledtransaction(const uint8_t *data, size_t len);
 
