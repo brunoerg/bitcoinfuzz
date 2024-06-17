@@ -49,6 +49,7 @@ clean:
 	cd dependencies/bitcoin && git clean -fxd
 
 set:
+	@$(if $(strip $(CORE)), cd dependencies/bitcoin && git fetch origin && git checkout $(CORE))
 	@$(if $(strip $(BTCD)), cd dependencies/btcd && git fetch origin && git checkout $(BTCD))
 	@$(if $(strip $(RUST_BITCOIN)), cd dependencies/rust-bitcoin && git fetch origin && git checkout $(RUST_BITCOIN))
 	@$(if $(strip $(RUST_MINISCRIPT)), cd dependencies/rust-miniscript && git fetch origin && git checkout $(RUST_MINISCRIPT))
