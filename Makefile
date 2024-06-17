@@ -1,8 +1,8 @@
 CXX      =  clang++
 CC       =  clang
 SOURCES :=  targets/bech32.cpp targets/tx_des.cpp targets/miniscript_string.cpp targets/block_des.cpp targets/prefilledtransaction.cpp
-INCLUDES =  bitcoin/src/ bitcoin/src/secp256k1/include
-LIB_DIR  =  bitcoin/src/ bitcoin/src/.libs bitcoin/src/secp256k1/.libs rust_bitcoin_lib/target/debug btcd_lib
+INCLUDES =  dependencies/ dependencies/bitcoin/src/ dependencies/bitcoin/src/secp256k1/include
+LIB_DIR  =  dependencies/bitcoin/src/ dependencies/bitcoin/src/.libs dependencies/bitcoin/src/secp256k1/.libs rust_bitcoin_lib/target/debug btcd_lib
 OBJS    :=  $(patsubst %.cpp, build/%.o, $(SOURCES))
 UNAME_S :=  $(shell uname -s)
 INCPATHS:=  $(foreach dir,$(INCLUDES),-I$(dir))
@@ -32,12 +32,12 @@ cargo:
 	-C llvm-args='-sanitizer-coverage-level=3'
 
 bitcoin:
-	cd bitcoin && \
+	cd dependencies/bitcoin && \
 	(test ! -f "Makefile" && \
 	./autogen.sh &&  \
 	CXX=$(CXX) CC=$(CC) ./configure --with-daemon=no --disable-wallet --disable-tests --disable-gui-tests --disable-bench \
 	--with-utils=no --enable-static --disable-hardening --disable-shared --with-experimental-kernel-lib --with-sanitizers=fuzzer) || :
-	cd bitcoin && $(MAKE)
+	cd dependencies/bitcoin && $(MAKE)
 
 go:
 	cd dependencies/btcd/wire && go build -tags=libfuzzer -gcflags=all=-d=libfuzzer .
@@ -46,7 +46,7 @@ go:
 clean:
 	rm -f bitcoinfuzz $(OBJS) btcd_lib/libbtcd_wrapper.*
 	rm -Rdf rust_bitcoin_lib/target
-	cd bitcoin && git clean -fxd
+	cd dependencies/bitcoin && git clean -fxd
 
 set:
 	@$(if $(strip $(BTCD)), cd dependencies/btcd && git fetch origin && git checkout $(BTCD))

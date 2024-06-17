@@ -4,8 +4,8 @@
 #include <stdio.h>
 
 #include "block_des.h"
-#include "../bitcoin/src/primitives/block.h"
-#include "../bitcoin/src/streams.h"
+#include "bitcoin/src/primitives/block.h"
+#include "bitcoin/src/streams.h"
 
 extern "C" char* rust_bitcoin_des_block(const uint8_t *data, size_t len);
 extern "C" char* go_btcd_des_block(uint8_t *data, size_t len);

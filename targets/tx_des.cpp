@@ -4,10 +4,10 @@
 #include <stdio.h>
 
 #include "tx_des.h"
-#include "../bitcoin/src/consensus/tx_check.h"
-#include "../bitcoin/src/consensus/validation.h"
-#include "../bitcoin/src/primitives/block.h"
-#include "../bitcoin/src/streams.h"
+#include "bitcoin/src/consensus/tx_check.h"
+#include "bitcoin/src/consensus/validation.h"
+#include "bitcoin/src/primitives/block.h"
+#include "bitcoin/src/streams.h"
 
 extern "C" char* go_btcd_des_tx(uint8_t *data, size_t len);
 
