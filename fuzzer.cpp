@@ -11,6 +11,7 @@
 #include "targets/prefilledtransaction.h"
 #include "targets/tx_des.h"
 #include "targets/bech32.h"
+#include "targets/psbt.h"
 
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size) {
     FuzzedDataProvider provider(data, size);
@@ -28,6 +29,8 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size) {
         TransactionDes(provider);
     } else if (target == "bech32") {
         Bech32(provider);
+    } else if (target == "psbt") {
+        Psbt(provider);
     }
 
     return 0; // Values other than 0 and -1 are reserved for future use.
