@@ -94,7 +94,7 @@ pub unsafe extern "C" fn rust_bitcoin_psbt(data: *const u8, len: usize) -> *mut 
                err.to_string().starts_with("bitcoin consensus encoding error") {
                 return str_to_c_string(&err.to_string());
             }
-            str_to_c_string("")
+            str_to_c_string("0")
         },
         Ok(_) => str_to_c_string("1"),
     }
