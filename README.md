@@ -43,5 +43,6 @@ FUZZ=target_name ./bitcoinfuzz
 - rust-miniscript: https://github.com/rust-bitcoin/rust-miniscript/issues/633
 - rust-bitcoin: https://github.com/rust-bitcoin/rust-bitcoin/issues/2681
 - btcd: https://github.com/btcsuite/btcd/issues/2195 (API mismatch with Bitcoin Core)
-- Bitcoin Core/rust-bitcoin: https://github.com/brunoerg/bitcoinfuzz/issues/34
+- Bitcoin Core: https://github.com/brunoerg/bitcoinfuzz/issues/34
 - rust-miniscript: https://github.com/rust-bitcoin/rust-miniscript/issues/696 (not found but reproductive) 
+- rust-miniscript: https://github.com/brunoerg/bitcoinfuzz/issues/39
