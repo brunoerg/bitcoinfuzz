@@ -7,6 +7,7 @@ use std::str::Utf8Error;
 
 use bitcoin::bip152::PrefilledTransaction;
 use bitcoin::consensus::deserialize_partial;
+use bitcoin::consensus::encode;
 use bitcoin::Block;
 use miniscript::bitcoin::script;
 use miniscript::bitcoin::secp256k1::XOnlyPublicKey;
@@ -97,6 +98,23 @@ pub unsafe extern "C" fn rust_bitcoin_psbt(data: *const u8, len: usize) -> *mut 
             str_to_c_string("0")
         },
         Ok(_) => str_to_c_string("1"),
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rust_bitcoin_script(data: *const u8, len: usize) -> bool {
+    // Safety: Ensure that the data pointer is valid for the given length
+    let data_slice = slice::from_raw_parts(data, len);
+
+    let script: Result<(bitcoin::script::ScriptBuf, usize), encode::Error> = encode::deserialize_partial(data_slice);
+    match script {
+        Err(_) => false,
+        Ok(s) => {
+            if s.0.is_op_return() || s.0.len() > 10_000 { 
+                return false
+            }
+            true
+        }
     }
 }
 
