@@ -49,7 +49,7 @@ jobs:
           fi
 
       - name: Build
-        timeout-minutes: 20
+        timeout-minutes: 40
         run: |
           if [ "$RUNNER_OS" == "macOS" ]; then
                 export PATH=/usr/local/bin:$PATH
