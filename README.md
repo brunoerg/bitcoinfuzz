@@ -46,3 +46,5 @@ FUZZ=target_name ./bitcoinfuzz
 - Bitcoin Core: https://github.com/brunoerg/bitcoinfuzz/issues/34
 - rust-miniscript: https://github.com/rust-bitcoin/rust-miniscript/issues/696 (not found but reproductive) 
 - rust-miniscript: https://github.com/brunoerg/bitcoinfuzz/issues/39
+- rust-bitcoin: https://github.com/rust-bitcoin/rust-bitcoin/issues/2891
+- rust-bitcoin: https://github.com/rust-bitcoin/rust-bitcoin/issues/2879
