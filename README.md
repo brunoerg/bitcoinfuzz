@@ -48,3 +48,4 @@ FUZZ=target_name ./bitcoinfuzz
 - rust-miniscript: https://github.com/brunoerg/bitcoinfuzz/issues/39
 - rust-bitcoin: https://github.com/rust-bitcoin/rust-bitcoin/issues/2891
 - rust-bitcoin: https://github.com/rust-bitcoin/rust-bitcoin/issues/2879
+- btcd: https://github.com/btcsuite/btcd/issues/2199
