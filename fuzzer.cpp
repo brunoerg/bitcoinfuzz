@@ -13,6 +13,7 @@
 #include "targets/bech32.h"
 #include "targets/psbt.h"
 #include "targets/script.h"
+#include "targets/addrv2.h"
 
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size) {
     FuzzedDataProvider provider(data, size);
@@ -34,6 +35,8 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size) {
         Psbt(provider);
     } else if (target == "script") {
         Script(provider);
+    } else if (target == "addrv2") {
+        Addrv2(provider);
     }
 
     return 0; // Values other than 0 and -1 are reserved for future use.
