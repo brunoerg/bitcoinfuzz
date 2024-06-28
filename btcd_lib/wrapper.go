@@ -2,11 +2,13 @@ package main
 
 import "C"
 import (
+	"bytes"
 	"unsafe"
 
 	"github.com/btcsuite/btcd/blockchain"
 	"github.com/btcsuite/btcd/btcutil"
 	"github.com/btcsuite/btcd/btcutil/bech32"
+	"github.com/btcsuite/btcd/wire"
 )
 
 //export go_btcd_des_block
@@ -48,6 +50,24 @@ func go_btcd_bech32(cinput *C.uchar, len C.int) *C.char {
 	}
 
 	return C.CString("")
+}
+
+//export go_btcd_addrv2
+func go_btcd_addrv2(cinput *C.uchar, datalen C.int, count *C.ulonglong) bool {
+	data := C.GoBytes(unsafe.Pointer(cinput), datalen)
+	r := bytes.NewReader(data)
+	m := &wire.MsgAddrV2{}
+	err := m.BtcDecode(r, 0, wire.WitnessEncoding)
+
+	actual_count := 0
+	for i := 0; i < len(m.AddrList); i++ {
+		if m.AddrList[i].Addr != nil {
+			actual_count++
+		}
+	}
+	*count = C.ulonglong(actual_count)
+
+	return err == nil
 }
 
 func main() {

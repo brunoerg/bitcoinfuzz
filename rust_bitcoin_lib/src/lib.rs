@@ -119,6 +119,23 @@ pub unsafe extern "C" fn rust_bitcoin_script(data: *const u8, len: usize) -> boo
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn rust_bitcoin_addrv2(data: *const u8, len: usize, actual_count: *mut u64) -> bool {
+    // Safety: Ensure that the data pointer is valid for the given length
+    let data_slice = slice::from_raw_parts(data, len);
+
+    let addr: Result<(Vec<bitcoin::p2p::address::AddrV2Message>, usize), _> = encode::deserialize_partial(data_slice);
+    match addr {
+        Err(_) => {
+            false
+        },
+        Ok(vec_addr) => {
+            *actual_count = vec_addr.0.len() as u64;
+            return true
+        }
+    }
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn rust_miniscript_from_str_check_key(input: *const c_char) -> *mut c_char {
     let Ok(desc) = c_str_to_str(input) else {
         return str_to_c_string("0");
