@@ -1,6 +1,6 @@
 CXX      =  clang++
 CC       =  clang
-SOURCES :=  targets/addrv2.cpp targets/script.cpp targets/psbt.cpp targets/bech32.cpp targets/tx_des.cpp targets/miniscript_string.cpp targets/block_des.cpp targets/prefilledtransaction.cpp
+SOURCES :=  $(wildcard $(shell find targets -type f -name '*.cpp'))
 INCLUDES =  dependencies/ dependencies/bitcoin/src/ dependencies/bitcoin/src/secp256k1/include
 LIB_DIR  =  dependencies/bitcoin/src/ dependencies/bitcoin/src/.libs dependencies/bitcoin/src/secp256k1/.libs rust_bitcoin_lib/target/debug btcd_lib
 OBJS    :=  $(patsubst %.cpp, build/%.o, $(SOURCES))
