@@ -9,7 +9,7 @@ INCPATHS:=  $(foreach dir,$(INCLUDES),-I$(dir))
 LIBPATHS:=  $(foreach lib,$(LIB_DIR),-L$(lib))
 CXXFLAGS:=  -O3 -g0 -Wall -fsanitize=fuzzer -DHAVE_GMTIME_R=1 -std=c++20 -march=native $(INCPATHS)
 ORIGLDFLAGS := $(LDFLAGS) # need to save a copy of ld flags as these get modified below
-LDFLAGS :=  $(LIBPATHS) -lbtcd_wrapper -lrust_bitcoin_lib -lbitcoin_common -lbitcoin_util -lbitcoinkernel -lsecp256k1 -lpthread -ldl
+LDFLAGS :=  $(LIBPATHS) -lbtcd_wrapper -lrust_bitcoin_lib -lbitcoin_node -lbitcoin_common -lbitcoin_util -lbitcoinkernel -lunivalue -lsecp256k1 -lpthread -ldl
 
 ifeq ($(UNAME_S),Darwin)
 LDFLAGS += -framework CoreFoundation -Wl,-ld_classic

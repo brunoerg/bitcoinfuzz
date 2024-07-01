@@ -6,6 +6,7 @@ use std::str::FromStr;
 use std::str::Utf8Error;
 
 use bitcoin::bip152::PrefilledTransaction;
+use bitcoin::bip152::HeaderAndShortIds;
 use bitcoin::consensus::deserialize_partial;
 use bitcoin::consensus::encode;
 use bitcoin::Block;
@@ -131,6 +132,25 @@ pub unsafe extern "C" fn rust_bitcoin_addrv2(data: *const u8, len: usize, actual
         Ok(vec_addr) => {
             *actual_count = vec_addr.0.len() as u64;
             return true
+        }
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rust_bitcoin_cmpctblocks(data: *const u8, len: usize) -> *mut c_char {
+    // Safety: Ensure that the data pointer is valid for the given length
+    let data_slice = slice::from_raw_parts(data, len);
+
+    let res = deserialize_partial::<HeaderAndShortIds>(data_slice);
+
+    match res {
+        Ok(_) => return str_to_c_string("0"),
+        Err(err) => {
+            if err.to_string().starts_with("unsupported segwit version") {
+                return str_to_c_string("unsupported segwit version")
+            }
+
+            return str_to_c_string("1")
         }
     }
 }
