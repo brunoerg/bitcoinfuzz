@@ -1,21 +1,15 @@
-use std::ffi::CStr;
-use std::ffi::CString;
-use std::os::raw::c_char;
 use std::slice;
-use std::str::FromStr;
-use std::str::Utf8Error;
+use std::os::raw::c_char;
+use std::ffi::{CStr, CString};
+use std::str::{FromStr, Utf8Error};
 
-use bitcoin::bip152::PrefilledTransaction;
-use bitcoin::bip152::HeaderAndShortIds;
-use bitcoin::consensus::deserialize_partial;
-use bitcoin::consensus::encode;
 use bitcoin::Block;
-use miniscript::bitcoin::script;
+use bitcoin::bip152::{PrefilledTransaction,HeaderAndShortIds};
+use bitcoin::consensus::{deserialize_partial, encode};
+
+use miniscript::{Miniscript, Segwitv0, Tap};
+use miniscript::bitcoin::{script, PublicKey};
 use miniscript::bitcoin::secp256k1::XOnlyPublicKey;
-use miniscript::bitcoin::PublicKey;
-use miniscript::Miniscript;
-use miniscript::Segwitv0;
-use miniscript::Tap;
 
 /// Creates a Rust str from a C string.
 ///
