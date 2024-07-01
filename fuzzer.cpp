@@ -14,6 +14,7 @@
 #include "targets/psbt.h"
 #include "targets/script.h"
 #include "targets/addrv2.h"
+#include "targets/cmpctblocks.h"
 
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size) {
     FuzzedDataProvider provider(data, size);
@@ -37,6 +38,8 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size) {
         Script(provider);
     } else if (target == "addrv2") {
         Addrv2(provider);
+    } else if (target == "cmpctblocks") {
+        CmpctBlocks(provider);
     }
 
     return 0; // Values other than 0 and -1 are reserved for future use.
