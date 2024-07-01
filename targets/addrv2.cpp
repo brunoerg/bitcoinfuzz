@@ -1,6 +1,5 @@
 #include <fuzzer/FuzzedDataProvider.h>
 #include <string>
-#include <iostream>
 #include <optional>
 #include <stdio.h>
 
@@ -11,7 +10,7 @@
 extern "C" bool rust_bitcoin_addrv2(uint8_t *data, size_t len, uint64_t *count);
 extern "C" bool go_btcd_addrv2(uint8_t *data, size_t len, uint64_t *count);
 
-std::optional<std::pair<uint64_t, uint64_t>> Core(Span<const uint8_t> buffer) 
+std::optional<std::pair<uint64_t, uint64_t>> Addrv2Core(Span<const uint8_t> buffer) 
 {
     std::vector<CAddress> addrs;
     DataStream ds{buffer};
@@ -34,9 +33,9 @@ void Addrv2(FuzzedDataProvider& provider)
 {
     std::vector<uint8_t> buffer{provider.ConsumeRemainingBytes<uint8_t>()};
     uint64_t count_rust = 0, count_btcd = 0;
-    bool rust_bitcoin{rust_bitcoin_addrv2(buffer.data(), buffer.size(), &count_rust)};
-    bool btcd{go_btcd_addrv2(buffer.data(), buffer.size(), &count_btcd)};
-    auto core{Core(buffer)};
+    [[maybe_unused]] bool rust_bitcoin{rust_bitcoin_addrv2(buffer.data(), buffer.size(), &count_rust)};
+    [[maybe_unused]] bool btcd{go_btcd_addrv2(buffer.data(), buffer.size(), &count_btcd)};
+    auto core{Addrv2Core(buffer)};
     if (core.has_value() && core->first > 0) {
         assert(core->first == count_rust);
         assert(core->second == count_btcd);
