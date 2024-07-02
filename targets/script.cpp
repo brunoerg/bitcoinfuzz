@@ -2,11 +2,11 @@
 #include <iostream>
 #include <stdio.h>
 
-#include "script.h"
+#include "bitcoin/src/test/fuzz/fuzz.h"
 #include "bitcoin/src/streams.h"
 #include "bitcoin/src/script/script.h"
 
-extern "C" bool rust_bitcoin_script(uint8_t *data, size_t len);
+extern "C" bool rust_bitcoin_script(const uint8_t *data, size_t len);
 
 bool CoreScript(Span<const uint8_t> buffer)
 {
@@ -22,9 +22,8 @@ bool CoreScript(Span<const uint8_t> buffer)
 }
 
 
-void Script(FuzzedDataProvider& provider)
+FUZZ_TARGET(Script)
 {
-    std::vector<uint8_t> buffer{provider.ConsumeRemainingBytes<uint8_t>()};
     bool core{CoreScript(buffer)};
     bool rust_bitcoin{rust_bitcoin_script(buffer.data(), buffer.size())};
     assert(core == rust_bitcoin);

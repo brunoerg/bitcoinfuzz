@@ -18,7 +18,7 @@ endif
 .PHONY: bitcoinfuzz bitcoin cargo go clean
 
 bitcoinfuzz: set $(OBJS) bitcoin cargo go
-	$(CXX) fuzzer.cpp -o $@ $(OBJS) $(CXXFLAGS) $(LDFLAGS)
+	$(CXX) dependencies/bitcoin/src/test/fuzz/fuzz.cpp -o $@ $(OBJS) $(CXXFLAGS) $(LDFLAGS)
 
 $(OBJS) : build/%.o: %.cpp
 	@[ -d $(@D) ] || mkdir -p $(@D)

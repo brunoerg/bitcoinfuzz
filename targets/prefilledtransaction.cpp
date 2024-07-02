@@ -3,6 +3,7 @@
 #include <iostream>
 #include <stdio.h>
 
+#include "bitcoin/src/test/fuzz/fuzz.h"
 #include "bitcoin/src/blockencodings.h"
 #include "bitcoin/src/streams.h"
 
@@ -20,9 +21,8 @@ std::optional<uint16_t> PrefilledTransactionCore(Span<const uint8_t> buffer)
     return tx.index;
 }
 
-void PrefilledTransactionTarget(FuzzedDataProvider& provider) 
+FUZZ_TARGET(PrefilledTransaction)
 {
-    std::vector<uint8_t> buffer{provider.ConsumeRemainingBytes<uint8_t>()};
     auto core{PrefilledTransactionCore(buffer)};
     std::string rust_bitcoin{rust_bitcoin_prefilledtransaction(buffer.data(), buffer.size())};
     if (rust_bitcoin == "unsupported segwit version") return;

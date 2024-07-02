@@ -2,11 +2,11 @@
 #include <string>
 #include <iostream>
 
-#include "cmpctblocks.h"
+#include "bitcoin/src/test/fuzz/fuzz.h"
 #include "bitcoin/src/blockencodings.h"
 #include "bitcoin/src/streams.h"
 
-extern "C" int rust_bitcoin_cmpctblocks(uint8_t *data, size_t len);
+extern "C" int rust_bitcoin_cmpctblocks(const uint8_t *data, size_t len);
 
 int CmpctBlocksCore(Span<const uint8_t> buffer) 
 {
@@ -22,9 +22,8 @@ int CmpctBlocksCore(Span<const uint8_t> buffer)
     return block_header_and_short_txids.BlockTxCount();
 }
 
-void CmpctBlocks(FuzzedDataProvider& provider)
+FUZZ_TARGET(CmpctBlocks)
 {
-    std::vector<uint8_t> buffer{provider.ConsumeRemainingBytes<uint8_t>()};
     int core{CmpctBlocksCore(buffer)};
     int rust_bitcoin{rust_bitcoin_cmpctblocks(buffer.data(), buffer.size())};
 

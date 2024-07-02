@@ -3,13 +3,13 @@
 #include <iostream>
 #include <stdio.h>
 
-#include "tx_des.h"
+#include "bitcoin/src/test/fuzz/fuzz.h"
 #include "bitcoin/src/consensus/tx_check.h"
 #include "bitcoin/src/consensus/validation.h"
 #include "bitcoin/src/primitives/block.h"
 #include "bitcoin/src/streams.h"
 
-extern "C" char* go_btcd_des_tx(uint8_t *data, size_t len);
+extern "C" char* go_btcd_des_tx(const uint8_t *data, size_t len);
 
 std::string TransactionDesCore(Span<const uint8_t> buffer)
 {
@@ -28,10 +28,8 @@ std::string TransactionDesCore(Span<const uint8_t> buffer)
     return "";
 }
 
-void TransactionDes(FuzzedDataProvider& provider) 
+FUZZ_TARGET(TransactionDes)
 {
-    std::vector<uint8_t> buffer{provider.ConsumeRemainingBytes<uint8_t>()};
-
     std::string core{TransactionDesCore(buffer)};
     std::string go_btcd{go_btcd_des_tx(buffer.data(), buffer.size())};
     assert(core == go_btcd);

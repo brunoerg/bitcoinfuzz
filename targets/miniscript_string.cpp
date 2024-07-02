@@ -3,7 +3,7 @@
 #include <iostream>
 #include <script/miniscript.h>
 
-#include "miniscript_string.h"
+#include "bitcoin/src/test/fuzz/fuzz.h"
 #include "bitcoin/src/pubkey.h"
 #include "bitcoin/src/key.h"
 
@@ -184,8 +184,11 @@ bool BitcoinCoreString(const std::string& input_str)
     return false;
 }
 
-void MiniscriptFromString(FuzzedDataProvider& provider) 
+FUZZ_TARGET(MiniscriptFromString)
 {
+    if (buffer.empty()) return;
+    FuzzedDataProvider provider(buffer.data(), buffer.size());
+
     std::string input_str{provider.ConsumeRemainingBytesAsString().c_str()};
     const bool core{BitcoinCoreString(input_str)};
     const std::string rust_miniscript{rust_miniscript_from_str_check_key(input_str.c_str())};

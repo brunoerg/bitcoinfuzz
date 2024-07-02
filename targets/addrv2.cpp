@@ -3,12 +3,12 @@
 #include <optional>
 #include <stdio.h>
 
-#include "addrv2.h"
+#include "bitcoin/src/test/fuzz/fuzz.h"
 #include "bitcoin/src/protocol.h"
 #include "bitcoin/src/streams.h"
 
-extern "C" bool rust_bitcoin_addrv2(uint8_t *data, size_t len, uint64_t *count);
-extern "C" bool go_btcd_addrv2(uint8_t *data, size_t len, uint64_t *count);
+extern "C" bool rust_bitcoin_addrv2(const uint8_t *data, size_t len, uint64_t *count);
+extern "C" bool go_btcd_addrv2(const uint8_t *data, size_t len, uint64_t *count);
 
 std::optional<std::pair<uint64_t, uint64_t>> Addrv2Core(Span<const uint8_t> buffer) 
 {
@@ -29,9 +29,8 @@ std::optional<std::pair<uint64_t, uint64_t>> Addrv2Core(Span<const uint8_t> buff
     return std::make_pair(addrs.size(), clearnet_tor_count);
 }
 
-void Addrv2(FuzzedDataProvider& provider)
+FUZZ_TARGET(Addrv2)
 {
-    std::vector<uint8_t> buffer{provider.ConsumeRemainingBytes<uint8_t>()};
     uint64_t count_rust = 0, count_btcd = 0;
     [[maybe_unused]] bool rust_bitcoin{rust_bitcoin_addrv2(buffer.data(), buffer.size(), &count_rust)};
     [[maybe_unused]] bool btcd{go_btcd_addrv2(buffer.data(), buffer.size(), &count_btcd)};
