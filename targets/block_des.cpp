@@ -24,7 +24,7 @@ std::string BlockDesCore(Span<const uint8_t> buffer)
 }
 
 // This target is expected to crash, needs some verification (e.g. segwit version).
-FUZZ_TARGET(BlockDes)
+FUZZ_TARGET(block_des)
 {
     std::string core{BlockDesCore(buffer)};
     std::string rust_bitcoin{rust_bitcoin_des_block(buffer.data(), buffer.size())};

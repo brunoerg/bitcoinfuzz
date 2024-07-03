@@ -29,7 +29,7 @@ std::optional<std::pair<uint64_t, uint64_t>> Addrv2Core(Span<const uint8_t> buff
     return std::make_pair(addrs.size(), clearnet_tor_count);
 }
 
-FUZZ_TARGET(Addrv2)
+FUZZ_TARGET(addrv2)
 {
     uint64_t count_rust = 0, count_btcd = 0;
     [[maybe_unused]] bool rust_bitcoin{rust_bitcoin_addrv2(buffer.data(), buffer.size(), &count_rust)};

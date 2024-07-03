@@ -28,7 +28,7 @@ std::string TransactionDesCore(Span<const uint8_t> buffer)
     return "";
 }
 
-FUZZ_TARGET(TransactionDes)
+FUZZ_TARGET(transaction_des)
 {
     std::string core{TransactionDesCore(buffer)};
     std::string go_btcd{go_btcd_des_tx(buffer.data(), buffer.size())};

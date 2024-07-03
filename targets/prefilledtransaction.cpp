@@ -21,7 +21,7 @@ std::optional<uint16_t> PrefilledTransactionCore(Span<const uint8_t> buffer)
     return tx.index;
 }
 
-FUZZ_TARGET(PrefilledTransaction)
+FUZZ_TARGET(prefilled_transaction)
 {
     auto core{PrefilledTransactionCore(buffer)};
     std::string rust_bitcoin{rust_bitcoin_prefilledtransaction(buffer.data(), buffer.size())};

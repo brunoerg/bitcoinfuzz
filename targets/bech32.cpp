@@ -20,7 +20,7 @@ std::string Bech32Core(Span<const uint8_t> buffer)
 }
 
 
-FUZZ_TARGET(Bech32)
+FUZZ_TARGET(bech32)
 {
     std::string core{Bech32Core(buffer)};
     std::string go_btcd{go_btcd_bech32(buffer.data(), buffer.size())};

@@ -22,7 +22,7 @@ int CmpctBlocksCore(Span<const uint8_t> buffer)
     return block_header_and_short_txids.BlockTxCount();
 }
 
-FUZZ_TARGET(CmpctBlocks)
+FUZZ_TARGET(cmpct_blocks)
 {
     int core{CmpctBlocksCore(buffer)};
     int rust_bitcoin{rust_bitcoin_cmpctblocks(buffer.data(), buffer.size())};

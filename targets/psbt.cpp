@@ -23,7 +23,7 @@ bool PSBTCore(Span<const uint8_t> buffer)
 }
 
 
-FUZZ_TARGET(Psbt)
+FUZZ_TARGET(psbt)
 {
     bool core{PSBTCore(buffer)};
     std::string rust_bitcoin{rust_bitcoin_psbt(buffer.data(), buffer.size())};

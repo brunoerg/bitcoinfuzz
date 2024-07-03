@@ -184,7 +184,7 @@ bool BitcoinCoreString(const std::string& input_str)
     return false;
 }
 
-FUZZ_TARGET(MiniscriptFromString)
+FUZZ_TARGET(miniscript_from_string)
 {
     if (buffer.empty()) return;
     FuzzedDataProvider provider(buffer.data(), buffer.size());

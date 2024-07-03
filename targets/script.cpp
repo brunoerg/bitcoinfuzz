@@ -22,7 +22,7 @@ bool CoreScript(Span<const uint8_t> buffer)
 }
 
 
-FUZZ_TARGET(Script)
+FUZZ_TARGET(script)
 {
     bool core{CoreScript(buffer)};
     bool rust_bitcoin{rust_bitcoin_script(buffer.data(), buffer.size())};
