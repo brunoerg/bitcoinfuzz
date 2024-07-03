@@ -3,11 +3,11 @@
 #include <iostream>
 #include <stdio.h>
 
-#include "bech32.h"
+#include "bitcoin/src/test/fuzz/fuzz.h"
 #include "bitcoin/src/bech32.h"
 #include "bitcoin/src/streams.h"
 
-extern "C" char* go_btcd_bech32(uint8_t *data, size_t len);
+extern "C" char* go_btcd_bech32(const uint8_t *data, size_t len);
 
 std::string Bech32Core(Span<const uint8_t> buffer)
 {
@@ -20,10 +20,8 @@ std::string Bech32Core(Span<const uint8_t> buffer)
 }
 
 
-void Bech32(FuzzedDataProvider& provider) 
+FUZZ_TARGET(bech32)
 {
-    std::vector<uint8_t> buffer{provider.ConsumeRemainingBytes<uint8_t>()};
-
     std::string core{Bech32Core(buffer)};
     std::string go_btcd{go_btcd_bech32(buffer.data(), buffer.size())};
 

@@ -62,4 +62,4 @@ jobs:
           fi
 
       - name: Test
-        run: ./bitcoinfuzz -detect_leaks=0 -runs=0
+        run: PRINT_ALL_FUZZ_TARGETS_AND_ABORT=1 ./bitcoinfuzz

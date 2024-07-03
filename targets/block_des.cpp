@@ -3,12 +3,12 @@
 #include <iostream>
 #include <stdio.h>
 
-#include "block_des.h"
+#include "bitcoin/src/test/fuzz/fuzz.h"
 #include "bitcoin/src/primitives/block.h"
 #include "bitcoin/src/streams.h"
 
 extern "C" char* rust_bitcoin_des_block(const uint8_t *data, size_t len);
-extern "C" char* go_btcd_des_block(uint8_t *data, size_t len);
+extern "C" char* go_btcd_des_block(const uint8_t *data, size_t len);
 
 std::string BlockDesCore(Span<const uint8_t> buffer)
 {
@@ -24,10 +24,8 @@ std::string BlockDesCore(Span<const uint8_t> buffer)
 }
 
 // This target is expected to crash, needs some verification (e.g. segwit version).
-void BlockDes(FuzzedDataProvider& provider) 
+FUZZ_TARGET(block_des)
 {
-    std::vector<uint8_t> buffer{provider.ConsumeRemainingBytes<uint8_t>()};
-
     std::string core{BlockDesCore(buffer)};
     std::string rust_bitcoin{rust_bitcoin_des_block(buffer.data(), buffer.size())};
     std::string go_btcd{go_btcd_des_block(buffer.data(), buffer.size())};
