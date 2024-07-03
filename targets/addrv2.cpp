@@ -14,19 +14,19 @@ std::optional<std::pair<uint64_t, uint64_t>> Addrv2Core(Span<const uint8_t> buff
 {
     std::vector<CAddress> addrs;
     DataStream ds{buffer};
-    uint64_t clearnet_count{0};
+    uint64_t clearnet_tor_count{0};
     try {
         ds >> CAddress::V2_NETWORK(addrs);
         if (addrs.size() > 1000) return std::nullopt;
         for (auto& addr : addrs) {
-            if (addr.IsIPv4() || addr.IsIPv6()) clearnet_count++;
+            if (addr.IsIPv4() || addr.IsIPv6() || addr.IsTor()) clearnet_tor_count++;
             if (!addr.IsValid()) return std::nullopt;
         }
     } catch (const std::ios_base::failure&) {
         return std::nullopt;
     }
 
-    return std::make_pair(addrs.size(), clearnet_count);
+    return std::make_pair(addrs.size(), clearnet_tor_count);
 }
 
 void Addrv2(FuzzedDataProvider& provider)
