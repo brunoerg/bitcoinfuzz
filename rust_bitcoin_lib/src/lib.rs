@@ -131,6 +131,34 @@ pub unsafe extern "C" fn rust_bitcoin_addrv2(data: *const u8, len: usize, actual
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn rust_bitcoin_headerandshortids(data: *const u8, len: usize) -> i32 {
+    // Safety: Ensure that the data pointer is valid for the given length
+    let data_slice = slice::from_raw_parts(data, len);
+
+    let res = deserialize_partial::<Block>(data_slice);
+
+    match res {
+        Ok(block) => {
+            // 101 is a random nonce value and 2 specifies that we want to use segwit
+            let compact = HeaderAndShortIds::from_block(&block.0, 101, 2, &[]);
+
+            match compact {
+                Ok(c) => return (c.prefilled_txs.len() + c.short_ids.len()).try_into().unwrap(),
+                Err(_) => return -1,
+            }
+
+        },
+        Err(err) => {
+            if err.to_string().starts_with("unsupported segwit version") {
+                return -2;
+            }
+
+            return -1;
+        }
+    }
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn rust_bitcoin_cmpctblocks(data: *const u8, len: usize) -> i32 {
     // Safety: Ensure that the data pointer is valid for the given length
     let data_slice = slice::from_raw_parts(data, len);
