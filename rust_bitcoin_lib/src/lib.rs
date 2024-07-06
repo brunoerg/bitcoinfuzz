@@ -4,7 +4,7 @@ use std::ffi::{CStr, CString};
 use std::str::{FromStr, Utf8Error};
 
 use bitcoin::Block;
-use bitcoin::bip152::{PrefilledTransaction,HeaderAndShortIds};
+use bitcoin::bip152::{PrefilledTransaction,HeaderAndShortIds,BlockTransactionsRequest};
 use bitcoin::consensus::{deserialize_partial, encode};
 
 use miniscript::{Miniscript, Segwitv0, Tap};
@@ -153,6 +153,21 @@ pub unsafe extern "C" fn rust_bitcoin_headerandshortids(data: *const u8, len: us
                 return -2;
             }
 
+            return -1;
+        }
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rust_bitcoin_blocktransactionrequests(data: *const u8, len: usize) -> i32 {
+    // Safety: Ensure that the data pointer is valid for the given length
+    let data_slice = slice::from_raw_parts(data, len);
+
+    let res = deserialize_partial::<BlockTransactionsRequest>(data_slice);
+
+    match res {
+        Ok(block) => return block.0.indexes.len().try_into().unwrap(),
+        Err(_) => {
             return -1;
         }
     }
