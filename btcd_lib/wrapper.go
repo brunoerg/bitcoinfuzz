@@ -70,6 +70,20 @@ func go_btcd_addrv2(cinput *C.uchar, datalen C.int, count *C.ulonglong) bool {
 	return err == nil
 }
 
+//export go_btcd_rawmessage
+func go_btcd_rawmessage(cinput *C.uchar, datalen C.int) C.int {
+	data := C.GoBytes(unsafe.Pointer(cinput), datalen)
+	r := bytes.NewReader(data)
+
+	_, _, err := wire.ReadMessage(r, wire.ProtocolVersion, wire.MainNet)
+
+	if err == nil {
+		return 0
+	}
+
+	return -1
+}
+
 func main() {
 
 }

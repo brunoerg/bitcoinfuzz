@@ -4,6 +4,7 @@ use std::ffi::{CStr, CString};
 use std::str::{FromStr, Utf8Error};
 
 use bitcoin::Block;
+use bitcoin::p2p::message::RawNetworkMessage;
 use bitcoin::bip152::{PrefilledTransaction,HeaderAndShortIds,BlockTransactionsRequest};
 use bitcoin::consensus::{deserialize_partial, encode};
 
@@ -187,6 +188,24 @@ pub unsafe extern "C" fn rust_bitcoin_cmpctblocks(data: *const u8, len: usize) -
                 return -2;
             }
 
+            return -1;
+        }
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rust_bitcoin_rawmessage(data: *const u8, len: usize) -> i32 {
+    // Safety: Ensure that the data pointer is valid for the given length
+    let data_slice = slice::from_raw_parts(data, len);
+
+    let res = deserialize_partial::<RawNetworkMessage>(data_slice);
+
+    match res {
+        Ok(_) => 0,
+        Err(err) => {
+            if err.to_string().starts_with("unsupported segwit version") {
+                return -2;
+            }
             return -1;
         }
     }
