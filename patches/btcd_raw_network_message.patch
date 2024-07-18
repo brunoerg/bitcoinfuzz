@@ -1,0 +1,52 @@
+diff --git a/dependencies/btcd/wire/message.go b/dependencies/btcd/wire/message.go
+index 1f412fa6..5043b607 100644
+--- a/dependencies/btcd/wire/message.go
++++ b/dependencies/btcd/wire/message.go
+@@ -398,14 +398,16 @@ func ReadMessageWithEncodingN(r io.Reader, pver uint32, btcnet BitcoinNet,
+ 	// Check for maximum length based on the message type as a malicious client
+ 	// could otherwise create a well-formed header and set the length to max
+ 	// numbers in order to exhaust the machine's memory.
+-	mpl := msg.MaxPayloadLength(pver)
+-	if hdr.length > mpl {
+-		discardInput(r, hdr.length)
+-		str := fmt.Sprintf("payload exceeds max length - header "+
+-			"indicates %v bytes, but max payload size for "+
+-			"messages of type [%v] is %v.", hdr.length, command, mpl)
+-		return totalBytes, nil, nil, messageError("ReadMessage", str)
+-	}
++	/*
++		mpl := msg.MaxPayloadLength(pver)
++			if hdr.length > mpl {
++				discardInput(r, hdr.length)
++				str := fmt.Sprintf("payload exceeds max length - header "+
++					"indicates %v bytes, but max payload size for "+
++					"messages of type [%v] is %v.", hdr.length, command, mpl)
++				return totalBytes, nil, nil, messageError("ReadMessage", str)
++			}
++	*/
+ 
+ 	// Read payload.
+ 	payload := make([]byte, hdr.length)
+@@ -416,13 +418,15 @@ func ReadMessageWithEncodingN(r io.Reader, pver uint32, btcnet BitcoinNet,
+ 	}
+ 
+ 	// Test checksum.
+-	checksum := chainhash.DoubleHashB(payload)[0:4]
+-	if !bytes.Equal(checksum, hdr.checksum[:]) {
+-		str := fmt.Sprintf("payload checksum failed - header "+
+-			"indicates %v, but actual checksum is %v.",
+-			hdr.checksum, checksum)
+-		return totalBytes, nil, nil, messageError("ReadMessage", str)
+-	}
++	/*
++		checksum := chainhash.DoubleHashB(payload)[0:4]
++		if !bytes.Equal(checksum, hdr.checksum[:]) {
++			str := fmt.Sprintf("payload checksum failed - header "+
++				"indicates %v, but actual checksum is %v.",
++				hdr.checksum, checksum)
++			return totalBytes, nil, nil, messageError("ReadMessage", str)
++		}
++	*/
+ 
+ 	// Unmarshal message.  NOTE: This must be a *bytes.Buffer since the
+ 	// MsgVersion BtcDecode function requires it.

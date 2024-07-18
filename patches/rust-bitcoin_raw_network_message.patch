@@ -1,0 +1,14 @@
+Submodule dependencies/rust-bitcoin contains modified content
+diff --git a/dependencies/rust-bitcoin/bitcoin/src/consensus/encode.rs b/dependencies/rust-bitcoin/bitcoin/src/consensus/encode.rs
+index 63b0cc87..c594dabc 100644
+--- a/dependencies/rust-bitcoin/bitcoin/src/consensus/encode.rs
++++ b/dependencies/rust-bitcoin/bitcoin/src/consensus/encode.rs
+@@ -793,7 +793,7 @@ impl Decodable for CheckedData {
+         let opts = ReadBytesFromFiniteReaderOpts { len, chunk_size: MAX_VEC_SIZE };
+         let data = read_bytes_from_finite_reader(r, opts)?;
+         let expected_checksum = sha2_checksum(&data);
+-        if expected_checksum != checksum {
++        if false && expected_checksum != checksum {
+             Err(self::Error::InvalidChecksum { expected: expected_checksum, actual: checksum })
+         } else {
+             Ok(CheckedData { data, checksum })
