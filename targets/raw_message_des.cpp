@@ -5,6 +5,7 @@
 #include "bitcoin/src/test/fuzz/fuzz.h"
 #include "bitcoin/src/protocol.h"
 #include "bitcoin/src/hash.h"
+#include "bitcoin/src/net.h"
 
 using namespace std::string_view_literals;
 
@@ -83,16 +84,15 @@ void initializeAndPerformChecks()
     auto btcd{go_btcd_rawmessage((uint8_t*)ds.data(), ds.size())};
     auto rust_bitcoin{rust_bitcoin_rawmessage((uint8_t*)ds.data(), ds.size())};
 
-    assert(rust_bitcoin == 0 || ("Rust bitcoin has not been patched." == nullptr));
-    assert(btcd == 0 || ("BTCD has not been patched." == nullptr));
+    assert(rust_bitcoin == 0 || ("rust-bitcoin has not been patched." == nullptr));
+    assert(btcd == 0 || ("btcd has not been patched." == nullptr));
 }
 
 FUZZ_TARGET(raw_message_des, .init = initializeAndPerformChecks)
 {
     FuzzedDataProvider provider(buffer.data(), buffer.size());
 
-    if (provider.remaining_bytes() < 2)
-        return;
+    if (provider.remaining_bytes() < 2) return;
 
     const auto msgtype = g_type != -1 ? LUT[g_type] : LUT[provider.ConsumeIntegral<uint8_t>() % LUT.size()];
     CMessageHeader header({0xf9, 0xbe, 0xb4, 0xd9}, msgtype.data(), provider.remaining_bytes());
@@ -101,11 +101,12 @@ FUZZ_TARGET(raw_message_des, .init = initializeAndPerformChecks)
     ds << header;
     ds << provider.ConsumeRemainingBytes<uint8_t>();
 
+    if (ds.size() > MAX_PROTOCOL_MESSAGE_LENGTH) return; // ignore messages larger than the max protocol size (32 MB)
+
     auto btcd{go_btcd_rawmessage((uint8_t*)ds.data(), ds.size())};
     auto rust_bitcoin{rust_bitcoin_rawmessage((uint8_t*)ds.data(), ds.size())};
 
-    if (rust_bitcoin == -2)
-        return;
+    if (rust_bitcoin == -2) return;
 
     assert(btcd == rust_bitcoin);
 }
