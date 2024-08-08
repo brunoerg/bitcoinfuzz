@@ -38,9 +38,8 @@ struct TestData {
     std::map<std::vector<unsigned char>, std::vector<unsigned char>> hash256_preimages;
     std::map<std::vector<unsigned char>, std::vector<unsigned char>> hash160_preimages;
 
-    TestData()
+    void Init()
     {
-        static ECC_Context ctx;
         // All our signatures sign (and are required to sign) this constant message.
         auto const MESSAGE_HASH = uint256S("f5cd94e18b6fe77dd7aca9e35c2b0c9cbd86356c80a71065");
         // We don't pass additional randomness when creating a schnorr signature.
@@ -92,10 +91,7 @@ struct TestData {
             hash160_preimages[hash] = std::vector<unsigned char>(keydata, keydata + 32);
         }
     }
-};
-
-//! Global TestData object
-std::unique_ptr<const TestData> g_testdata(new TestData());
+} TEST_DATA;
 
 struct KeyConverter {
     typedef CPubKey Key;
@@ -120,11 +116,11 @@ struct KeyConverter {
     //! Convert a public key to its Hash160 bytes (precomputed).
     std::vector<unsigned char> ToPKHBytes(const CPubKey& key) const {
         if (!miniscript::IsTapscript(m_script_ctx)) {
-            auto hash = g_testdata->pkhashes.at(key);
+            auto hash = TEST_DATA.pkhashes.at(key);
             return {hash.begin(), hash.end()};
         }
         const XOnlyPubKey xonly_key{key};
-        auto hash = g_testdata->xonly_pkhashes.at(xonly_key);
+        auto hash = TEST_DATA.xonly_pkhashes.at(xonly_key);
         return {hash.begin(), hash.end()};
     }
 
@@ -155,7 +151,7 @@ struct KeyConverter {
         assert(last - first == 20);
         CKeyID keyid;
         std::copy(first, last, keyid.begin());
-        return g_testdata->pkmap.at(keyid);
+        return TEST_DATA.pkmap.at(keyid);
     }
 
     std::optional<std::string> ToString(const Key& key) const {
@@ -184,7 +180,13 @@ bool BitcoinCoreString(const std::string& input_str)
     return false;
 }
 
-FUZZ_TARGET(miniscript_from_string)
+void FuzzInit()
+{
+    static ECC_Context ecc_context{};
+    TEST_DATA.Init();
+}
+
+FUZZ_TARGET(miniscript_from_string, .init=FuzzInit)
 {
     if (buffer.empty()) return;
     FuzzedDataProvider provider(buffer.data(), buffer.size());
