@@ -16,7 +16,7 @@ int HeaderAndShortIdsCore(Span<const uint8_t> buffer)
     try {
         ds >> TX_WITH_WITNESS(block);
         if (block.vtx.size() < 1) return res;
-        CBlockHeaderAndShortTxIDs block_header_and_short_txids {block}; // use the value of 101 as nonce
+        CBlockHeaderAndShortTxIDs block_header_and_short_txids {block, 101}; // use the value of 101 as nonce
         res = block_header_and_short_txids.BlockTxCount();
     } catch (const std::ios_base::failure& e) {
         if (std::string(e.what()).find("Superfluous witness record") != std::string::npos)
