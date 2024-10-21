@@ -1,7 +1,7 @@
 CXX      =  clang++
 CC       =  clang
 SOURCES :=  $(wildcard $(shell find targets -type f -name '*.cpp'))
-INCLUDES =  dependencies/ dependencies/bitcoin/src/ dependencies/bitcoin/src/secp256k1/include dependencies/bitcoin/src/univalue/include
+INCLUDES =  dependencies/ dependencies/bitcoin/src/ dependencies/bitcoin/src/secp256k1/include
 LIB_DIR  =  dependencies/bitcoin/src/ dependencies/bitcoin/src/.libs dependencies/bitcoin/src/secp256k1/.libs rust_bitcoin_lib/target/debug btcd_lib
 OBJS    :=  $(patsubst %.cpp, build/%.o, $(SOURCES))
 UNAME_S :=  $(shell uname -s)
@@ -9,7 +9,7 @@ INCPATHS:=  $(foreach dir,$(INCLUDES),-I$(dir))
 LIBPATHS:=  $(foreach lib,$(LIB_DIR),-L$(lib))
 CXXFLAGS:=  -O3 -g0 -Wall -fsanitize=fuzzer -DHAVE_GMTIME_R=1 -std=c++20 -march=native $(INCPATHS)
 ORIGLDFLAGS := $(LDFLAGS) # need to save a copy of ld flags as these get modified below
-LDFLAGS :=  $(LIBPATHS) -lbtcd_wrapper -lrust_bitcoin_lib -ltest_fuzz -ltest_util -levent_pthreads -levent -lbitcoin_cli -lbitcoin_node -lbitcoin_common -lbitcoin_util -lbitcoinkernel -lunivalue -lsecp256k1 -lpthread -ldl
+LDFLAGS :=  $(LIBPATHS) -lbtcd_wrapper -lrust_bitcoin_lib -lbitcoin_node -lbitcoin_common -lbitcoin_util -lbitcoinkernel -lunivalue -lsecp256k1 -lpthread -ldl
 
 ifeq ($(UNAME_S),Darwin)
 LDFLAGS += -framework CoreFoundation -Wl,-ld_classic
