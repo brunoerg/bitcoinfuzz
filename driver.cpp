@@ -847,6 +847,19 @@ void Driver::Aes256CbcTarget(std::span<const uint8_t> buffer) const {
   }
 }
 
+void Driver::MultiIndexTarget(std::span<const uint8_t> buffer) const {
+  std::optional<std::string> last_response{std::nullopt};
+  std::string last_module_name;
+  for (auto &module : modules) {
+    std::optional<std::string> res{module.second->multiindex_ops(buffer)};
+    if (!res.has_value())
+      continue;
+
+    VerifyMatchingResponse(last_response, last_module_name, module.first, *res,
+                           "Multi-index behavior mismatch");
+  }
+}
+
 void Driver::Run(const uint8_t *data, const size_t size,
                  const std::string &target) const {
   std::span<const uint8_t> buffer{data, size};
@@ -920,6 +933,8 @@ void Driver::Run(const uint8_t *data, const size_t size,
     this->Aes256CbcTarget(buffer);
   } else if (target == "musig2_sign_session") {
     this->Musig2SignSessionTarget(buffer);
+  } else if (target == "multi_index") {
+    this->MultiIndexTarget(buffer);
   } else {
     std::cout << "Unknown target: " << target << std::endl;
     assert(false);

@@ -133,7 +133,9 @@ jobs:
           -DRUSTREEXO \
           -DUTREEXO \
           -DPYCOIN \
-          -DLIBBITCOIN_SYSTEM" \
+          -DLIBBITCOIN_SYSTEM \
+          -DBOOST_MULTI_INDEX \
+          -DTMI2" \
           ONLY_MODULES=1 \
           ./scripts/auto_build.py
 
@@ -299,6 +301,10 @@ jobs:
           - corpus: "musig2_sign_session"
             target: "musig2_sign_session"
             cxxflags: "-DRUST_MUSIG2 -DSECP256K1"
+            asan_options: "detect_leaks=0:detect_container_overflow=0"
+          - corpus: "multi_index"
+            target: "multi_index"
+            cxxflags: "-DBOOST_MULTI_INDEX -DTMI2"
             asan_options: "detect_leaks=0:detect_container_overflow=0"
 
     steps:

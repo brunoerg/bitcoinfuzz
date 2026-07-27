@@ -81,6 +81,8 @@ SUBMODULES_BY_FLAG = {
     "LIBWALLY_CORE": ["external/libwally-core"],
     "BITCOIN_CORE": ["external/bitcoin-core"],
     "LIBBITCOIN_SYSTEM": ["external/libbitcoin-system", "external/secp256k1"],
+    "BOOST_MULTI_INDEX": ["external/multi_index", "external/boost-mp11"],
+    "TMI2": ["external/tmi2"],
 }
 
 def ensure_submodules_for_flags(flags, quiet: bool):

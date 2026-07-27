@@ -69,5 +69,6 @@ public:
   void Musig2KeyAggTarget(std::span<const uint8_t> buffer) const;
   void Aes256CbcTarget(std::span<const uint8_t> buffer) const;
   void Musig2SignSessionTarget(std::span<const uint8_t> buffer) const;
+  void MultiIndexTarget(std::span<const uint8_t> buffer) const;
 };
 } // namespace bitcoinfuzz

@@ -33,3 +33,18 @@
 	url = https://github.com/bitcoinfuzz/libbitcoin-system.git
 	ignore = all
 	branch = master
+[submodule "external/multi_index"]
+	path = external/multi_index
+	url = https://github.com/boostorg/multi_index.git
+	ignore = all
+	branch = master
+[submodule "external/tmi2"]
+	path = external/tmi2
+	url = https://github.com/theuni/tmi2.git
+	ignore = all
+	branch = main
+[submodule "external/boost-mp11"]
+	path = external/boost-mp11
+	url = https://github.com/boostorg/mp11.git
+	ignore = all
+	branch = master

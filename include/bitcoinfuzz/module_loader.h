@@ -153,6 +153,14 @@
 #include <modules/rustcryptoaes/module.h>
 #endif
 
+#ifdef BOOST_MULTI_INDEX
+#include <modules/boostmultiindex/module.h>
+#endif
+
+#ifdef TMI2
+#include <modules/tmi2/module.h>
+#endif
+
 #ifdef CUSTOM_MUTATOR_BOLT12_OFFER
 #include <custommutator/mutators/bolt12_offer.h>
 #endif

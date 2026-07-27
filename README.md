@@ -151,6 +151,13 @@ contains the module-specific build commands, dependencies, and notes.
 | [Rustreexo](https://github.com/mit-dci/rustreexo) | `RUSTREEXO` | [modules/rustreexo/README.md](./modules/rustreexo/README.md) |
 | [Utreexo](https://github.com/utreexo/utreexo) | `UTREEXO` | [modules/utreexo/README.md](./modules/utreexo/README.md) |
 
+### Container Modules
+
+| Module | CXXFLAGS define | Instructions |
+| --- | --- | --- |
+| [Boost.MultiIndex](https://github.com/boostorg/multi_index) | `BOOST_MULTI_INDEX` | [modules/boostmultiindex/README.md](./modules/boostmultiindex/README.md) |
+| [tmi2](https://github.com/theuni/tmi2) | `TMI2` | [modules/tmi2/README.md](./modules/tmi2/README.md) |
+
 ## Final Build and Execution
 Once the modules are compiled, you can compile `bitcoinfuzz` and execute it:
 

@@ -112,6 +112,8 @@ public:
              bool pad, std::span<const uint8_t> data) const;
   virtual std::optional<std::string>
   musig2_sign_session(const Musig2SignSessionInput &input) const;
+  virtual std::optional<std::string>
+  multiindex_ops(std::span<const uint8_t> buffer) const;
 
   virtual ~BaseModule() noexcept;
 };
