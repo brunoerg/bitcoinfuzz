@@ -66,6 +66,7 @@ public:
   void DecodeOnionTarget(std::span<const uint8_t> buffer) const;
   void StumpModifyAddTarget(std::span<const uint8_t> buffer) const;
   void MerkleRootComputeTarget(std::span<const uint8_t> buffer) const;
+  void StumpUpdateTarget(std::span<const uint8_t> buffer) const;
   void Bip32DeriveFromPathTarget(std::span<const uint8_t> buffer) const;
   void Musig2KeyAggTarget(std::span<const uint8_t> buffer) const;
   void Aes256CbcTarget(std::span<const uint8_t> buffer) const;
