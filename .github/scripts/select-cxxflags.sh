@@ -43,6 +43,7 @@ declare -A MODULE_FLAGS=(
   [libbitcoinsystem]="-DLIBBITCOIN_SYSTEM"
   [boostmultiindex]="-DBOOST_MULTI_INDEX"
   [tmi2]="-DTMI2"
+  [stdcontainers]="-DSTD_CONTAINERS"
 )
 
 mapfile -t MODULES < <(

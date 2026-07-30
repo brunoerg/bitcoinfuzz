@@ -23,7 +23,8 @@ CXXFLAGS += -Wall -Wextra -std=c++20 -fsanitize=address,fuzzer-no-link \
 module.a: module.o
 	ar rcs module.a module.o
 
-module.o: module.cpp module.h ../../include/bitcoinfuzz/multiindex_harness.h
+module.o: module.cpp module.h ../../include/bitcoinfuzz/multiindex_harness.h \
+	../../include/bitcoinfuzz/singleindex_harness.h
 	$(CXX) $(CXXFLAGS) -fPIC -c module.cpp -o module.o
 
 format:

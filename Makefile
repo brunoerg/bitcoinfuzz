@@ -146,6 +146,10 @@ ifneq ($(findstring -DTMI2,$(BASE_CXXFLAGS) $(CXXFLAGS)),)
 	MODULES += modules/tmi2/module.a
 endif
 
+ifneq ($(findstring -DSTD_CONTAINERS,$(BASE_CXXFLAGS) $(CXXFLAGS)),)
+	MODULES += modules/stdcontainers/module.a
+endif
+
 ifeq ($(UNAME_S), Darwin)
 	LDFLAGS = -framework CoreFoundation -Wl,-ld_classic
 endif

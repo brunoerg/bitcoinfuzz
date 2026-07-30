@@ -198,4 +198,24 @@ BaseModule::multiindex_ops(std::span<const uint8_t> /*buffer*/) const {
   return std::nullopt;
 }
 
+std::optional<std::string>
+BaseModule::ordered_unique_ops(std::span<const uint8_t> /*buffer*/) const {
+  return std::nullopt;
+}
+
+std::optional<std::string>
+BaseModule::ordered_non_unique_ops(std::span<const uint8_t> /*buffer*/) const {
+  return std::nullopt;
+}
+
+std::optional<std::string>
+BaseModule::hashed_unique_ops(std::span<const uint8_t> /*buffer*/) const {
+  return std::nullopt;
+}
+
+std::optional<std::string>
+BaseModule::hashed_non_unique_ops(std::span<const uint8_t> /*buffer*/) const {
+  return std::nullopt;
+}
+
 } // namespace bitcoinfuzz

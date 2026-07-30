@@ -28,6 +28,12 @@ private:
                               const std::string &module_name, const T &response,
                               std::string_view failure_message) const;
 
+  using SingleIndexOperation = std::optional<std::string> (BaseModule::*)(
+      std::span<const uint8_t>) const;
+  void SingleIndexTarget(std::span<const uint8_t> buffer,
+                         SingleIndexOperation operation,
+                         std::string_view failure_message) const;
+
 public:
   Driver(ModuleLogger &logger, bool log_outputs = false)
       : module_logger(logger), log_outputs(log_outputs) {}

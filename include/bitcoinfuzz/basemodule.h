@@ -114,6 +114,14 @@ public:
   musig2_sign_session(const Musig2SignSessionInput &input) const;
   virtual std::optional<std::string>
   multiindex_ops(std::span<const uint8_t> buffer) const;
+  virtual std::optional<std::string>
+  ordered_unique_ops(std::span<const uint8_t> buffer) const;
+  virtual std::optional<std::string>
+  ordered_non_unique_ops(std::span<const uint8_t> buffer) const;
+  virtual std::optional<std::string>
+  hashed_unique_ops(std::span<const uint8_t> buffer) const;
+  virtual std::optional<std::string>
+  hashed_non_unique_ops(std::span<const uint8_t> buffer) const;
 
   virtual ~BaseModule() noexcept;
 };

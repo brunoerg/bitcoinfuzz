@@ -13,6 +13,11 @@ The op sequence and trace comparison live in
 [`include/bitcoinfuzz/multiindex_harness.h`](../../include/bitcoinfuzz/multiindex_harness.h),
 shared by both modules; this module only instantiates the tmi container.
 
+The module also participates in four focused single-index targets alongside
+Boost.MultiIndex and the matching standard associative containers:
+`multi_index_ordered_unique`, `multi_index_ordered_non_unique`,
+`multi_index_hashed_unique`, and `multi_index_hashed_non_unique`.
+
 Two op groups are currently compiled out via flags at the top of the harness
 header (`kEnableModifyOps`, `kEnableClearOps`) because they hit known tmi2 bugs;
 flip them back on once the upstream fixes land.
@@ -32,4 +37,12 @@ Then compile bitcoinfuzz with `-DTMI2` and run:
 
 ```bash
 FUZZ=multi_index MODULES=BOOST_MULTI_INDEX,TMI2 ./bitcoinfuzz
+```
+
+For example, run a focused target with:
+
+```bash
+FUZZ=multi_index_ordered_unique \
+MODULES=BOOST_MULTI_INDEX,TMI2,STD_CONTAINERS \
+./bitcoinfuzz
 ```

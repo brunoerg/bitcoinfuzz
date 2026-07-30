@@ -860,6 +860,21 @@ void Driver::MultiIndexTarget(std::span<const uint8_t> buffer) const {
   }
 }
 
+void Driver::SingleIndexTarget(std::span<const uint8_t> buffer,
+                               SingleIndexOperation operation,
+                               std::string_view failure_message) const {
+  std::optional<std::string> last_response{std::nullopt};
+  std::string last_module_name;
+  for (auto &module : modules) {
+    std::optional<std::string> res{(module.second.get()->*operation)(buffer)};
+    if (!res.has_value())
+      continue;
+
+    VerifyMatchingResponse(last_response, last_module_name, module.first, *res,
+                           failure_message);
+  }
+}
+
 void Driver::Run(const uint8_t *data, const size_t size,
                  const std::string &target) const {
   std::span<const uint8_t> buffer{data, size};
@@ -935,6 +950,18 @@ void Driver::Run(const uint8_t *data, const size_t size,
     this->Musig2SignSessionTarget(buffer);
   } else if (target == "multi_index") {
     this->MultiIndexTarget(buffer);
+  } else if (target == "multi_index_ordered_unique") {
+    this->SingleIndexTarget(buffer, &BaseModule::ordered_unique_ops,
+                            "Ordered unique index behavior mismatch");
+  } else if (target == "multi_index_ordered_non_unique") {
+    this->SingleIndexTarget(buffer, &BaseModule::ordered_non_unique_ops,
+                            "Ordered non-unique index behavior mismatch");
+  } else if (target == "multi_index_hashed_unique") {
+    this->SingleIndexTarget(buffer, &BaseModule::hashed_unique_ops,
+                            "Hashed unique index behavior mismatch");
+  } else if (target == "multi_index_hashed_non_unique") {
+    this->SingleIndexTarget(buffer, &BaseModule::hashed_non_unique_ops,
+                            "Hashed non-unique index behavior mismatch");
   } else {
     std::cout << "Unknown target: " << target << std::endl;
     assert(false);

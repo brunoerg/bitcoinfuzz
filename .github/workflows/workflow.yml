@@ -135,7 +135,8 @@ jobs:
           -DPYCOIN \
           -DLIBBITCOIN_SYSTEM \
           -DBOOST_MULTI_INDEX \
-          -DTMI2" \
+          -DTMI2 \
+          -DSTD_CONTAINERS" \
           ONLY_MODULES=1 \
           ./scripts/auto_build.py
 
@@ -305,6 +306,22 @@ jobs:
           - corpus: "multi_index"
             target: "multi_index"
             cxxflags: "-DBOOST_MULTI_INDEX -DTMI2"
+            asan_options: "detect_leaks=0:detect_container_overflow=0"
+          - corpus: "multi_index_ordered_unique"
+            target: "multi_index_ordered_unique"
+            cxxflags: "-DBOOST_MULTI_INDEX -DTMI2 -DSTD_CONTAINERS"
+            asan_options: "detect_leaks=0:detect_container_overflow=0"
+          - corpus: "multi_index_ordered_non_unique"
+            target: "multi_index_ordered_non_unique"
+            cxxflags: "-DBOOST_MULTI_INDEX -DTMI2 -DSTD_CONTAINERS"
+            asan_options: "detect_leaks=0:detect_container_overflow=0"
+          - corpus: "multi_index_hashed_unique"
+            target: "multi_index_hashed_unique"
+            cxxflags: "-DBOOST_MULTI_INDEX -DTMI2 -DSTD_CONTAINERS"
+            asan_options: "detect_leaks=0:detect_container_overflow=0"
+          - corpus: "multi_index_hashed_non_unique"
+            target: "multi_index_hashed_non_unique"
+            cxxflags: "-DBOOST_MULTI_INDEX -DTMI2 -DSTD_CONTAINERS"
             asan_options: "detect_leaks=0:detect_container_overflow=0"
 
     steps:

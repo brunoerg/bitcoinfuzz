@@ -157,6 +157,7 @@ contains the module-specific build commands, dependencies, and notes.
 | --- | --- | --- |
 | [Boost.MultiIndex](https://github.com/boostorg/multi_index) | `BOOST_MULTI_INDEX` | [modules/boostmultiindex/README.md](./modules/boostmultiindex/README.md) |
 | [tmi2](https://github.com/theuni/tmi2) | `TMI2` | [modules/tmi2/README.md](./modules/tmi2/README.md) |
+| Standard associative containers | `STD_CONTAINERS` | [modules/stdcontainers/README.md](./modules/stdcontainers/README.md) |
 
 ## Final Build and Execution
 Once the modules are compiled, you can compile `bitcoinfuzz` and execute it:
