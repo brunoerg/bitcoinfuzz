@@ -11,6 +11,8 @@ public:
   musig2_key_agg(std::span<const uint8_t> seckeys) const override;
   std::optional<std::string>
   musig2_sign_session(const Musig2SignSessionInput &input) const override;
+  std::optional<std::string>
+  musig2_keyagg_ctx(std::span<const uint8_t> buffer) const override;
   ~RustMusig2() noexcept override = default;
 };
 } // namespace module

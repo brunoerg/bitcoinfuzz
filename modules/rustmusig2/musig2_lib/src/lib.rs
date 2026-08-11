@@ -1,5 +1,5 @@
 use musig2::secp::MaybeScalar;
-use musig2::{AggNonce, KeyAggContext, PartialSignature, PubNonce, SecNonce};
+use musig2::{AggNonce, BinaryEncoding, KeyAggContext, PartialSignature, PubNonce, SecNonce};
 use secp256k1::{PublicKey, Secp256k1, SecretKey};
 use std::ffi::CString;
 use std::os::raw::c_char;
@@ -266,6 +266,66 @@ unsafe fn apply_tweaks(
         };
     }
     Some(ctx)
+}
+
+/// Deserializes a MuSig2 KeyAggContext and verifies that parse/serialize is
+/// idempotent.
+///
+/// The binary format (KeyAggContext::to_bytes) is: a header byte (bit 0 =
+/// negate aggregated pubkey parity, bit 1 = tweak accumulator present), an
+/// optional 32-byte tweak accumulator, a 4-byte big-endian pubkey count, and
+/// one 33-byte compressed pubkey per participant.
+///
+/// # Returns
+/// * "DECODE_ERR" if the bytes are rejected;
+/// * "ROUNDTRIP_FAIL:<detail>" if parsing succeeded but re-serializing and
+///   re-parsing is not the identity (a library invariant violation; the C++
+///   driver treats this sentinel as fatal even with a single module);
+/// * "<aggpub_hex>;<ser_hex>" — the aggregated compressed pubkey and the
+///   canonical serialization — on success.
+///
+/// A panic inside the parser (e.g. the empty-set assertion reachable with a
+/// wrapped pubkey count on 32-bit targets) aborts the process and is caught
+/// by libFuzzer as a crash, which is the intended behavior for this target.
+///
+/// # Safety
+/// Caller must ensure `data` points to `len` valid bytes.
+#[no_mangle]
+pub unsafe extern "C" fn musig2_keyagg_ctx(data: *const u8, len: usize) -> *mut c_char {
+    if data.is_null() {
+        return ptr::null_mut();
+    }
+    let bytes = slice::from_raw_parts(data, len);
+
+    let ctx = match KeyAggContext::from_bytes(bytes) {
+        Ok(ctx) => ctx,
+        Err(_) => return str_to_c_string("DECODE_ERR"),
+    };
+
+    let ser1 = ctx.to_bytes();
+    match KeyAggContext::from_bytes(&ser1) {
+        Ok(ctx2) if ctx2.to_bytes() == ser1 => {}
+        Ok(ctx2) => {
+            return str_to_c_string(&format!(
+                "ROUNDTRIP_FAIL:re-serialization changed:{}:{}",
+                hex::encode(&ser1),
+                hex::encode(ctx2.to_bytes())
+            ));
+        }
+        Err(_) => {
+            return str_to_c_string(&format!(
+                "ROUNDTRIP_FAIL:re-parse rejected:{}",
+                hex::encode(&ser1)
+            ));
+        }
+    }
+
+    let aggregated_pubkey: PublicKey = ctx.aggregated_pubkey();
+    str_to_c_string(&format!(
+        "{}:{}",
+        hex::encode(aggregated_pubkey.serialize()),
+        hex::encode(&ser1)
+    ))
 }
 
 /// Frees a string allocated by this library.

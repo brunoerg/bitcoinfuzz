@@ -300,6 +300,10 @@ jobs:
             target: "musig2_sign_session"
             cxxflags: "-DRUST_MUSIG2 -DSECP256K1"
             asan_options: "detect_leaks=0:detect_container_overflow=0"
+          - corpus: "musig2_keyagg_ctx"
+            target: "musig2_keyagg_ctx"
+            cxxflags: "-DRUST_MUSIG2 -DSECP256K1"
+            asan_options: "detect_leaks=0:detect_container_overflow=0"
 
     steps:
       - name: Checkout repo

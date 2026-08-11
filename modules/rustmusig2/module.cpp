@@ -50,5 +50,16 @@ RustMusig2::musig2_sign_session(const Musig2SignSessionInput &input) const {
   return s;
 }
 
+std::optional<std::string>
+RustMusig2::musig2_keyagg_ctx(std::span<const uint8_t> buffer) const {
+  char *result = ::musig2_keyagg_ctx(buffer.data(), buffer.size());
+  if (!result)
+    return std::nullopt;
+
+  std::string s(result);
+  ::musig2_free_string(result);
+  return s;
+}
+
 } // namespace module
 } // namespace bitcoinfuzz

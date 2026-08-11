@@ -818,6 +818,29 @@ void Driver::Musig2SignSessionTarget(std::span<const uint8_t> buffer) const {
   }
 }
 
+void Driver::Musig2KeyAggCtxTarget(std::span<const uint8_t> buffer) const {
+  std::optional<std::string> last_response{std::nullopt};
+  std::string last_module_name;
+
+  for (auto &module : modules) {
+    std::optional<std::string> res{module.second->musig2_keyagg_ctx(buffer)};
+    if (!res.has_value())
+      continue;
+
+    // A roundtrip failure is a library invariant violation, not a value to
+    // compare: fail hard even when a single module implements this target.
+    if (res->starts_with("ROUNDTRIP_FAIL")) {
+      std::cout << "KeyAggContext roundtrip failure" << std::endl;
+      std::cout << "Module: " << module.first << std::endl;
+      std::cout << "Result: " << *res << std::endl;
+      assert(false);
+    }
+
+    VerifyMatchingResponse(last_response, last_module_name, module.first, *res,
+                           "MuSig2 KeyAggContext deserialization failed");
+  }
+}
+
 void Driver::Aes256CbcTarget(std::span<const uint8_t> buffer) const {
   FuzzedDataProvider provider(buffer.data(), buffer.size());
   // key(32) + iv(16) + pad flag(1) + at least one data byte. Empty data is
@@ -920,6 +943,8 @@ void Driver::Run(const uint8_t *data, const size_t size,
     this->Aes256CbcTarget(buffer);
   } else if (target == "musig2_sign_session") {
     this->Musig2SignSessionTarget(buffer);
+  } else if (target == "musig2_keyagg_ctx") {
+    this->Musig2KeyAggCtxTarget(buffer);
   } else {
     std::cout << "Unknown target: " << target << std::endl;
     assert(false);

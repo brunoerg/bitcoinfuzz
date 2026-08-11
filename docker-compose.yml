@@ -460,9 +460,27 @@ services:
       args:
         CXXFLAGS: "-DRUST_MUSIG2 -DSECP256K1"
         FUZZ: musig2_key_agg
-    env_file: .env
     environment:
       MODULES: ${MODULES:-}
+      LIBFUZZ_DETECT_LEAKS: 0
+      ASAN_OPTIONS: detect_leaks=0
+    env_file: .env
+    volumes:
+      - ./docker:/app/data
+
+  musig2_keyagg_ctx:
+    build:
+      context: .
+      tags:
+        - bitcoinfuzz:musig2_keyagg_ctx
+      args:
+        CXXFLAGS: "-DRUST_MUSIG2 -DSECP256K1"
+        FUZZ: musig2_keyagg_ctx
+    environment:
+      MODULES: ${MODULES:-}
+      LIBFUZZ_DETECT_LEAKS: 0
+      ASAN_OPTIONS: detect_leaks=0
+    env_file: .env
     volumes:
       - ./docker:/app/data
 

@@ -113,6 +113,20 @@ public:
   virtual std::optional<std::string>
   musig2_sign_session(const Musig2SignSessionInput &input) const;
 
+  // Deserializes a MuSig2 key aggregation context from its binary format
+  // (rust-musig2's KeyAggContext: header byte, optional 32-byte tweak
+  // accumulator, u32 BE pubkey count, 33-byte compressed pubkeys) and checks
+  // that parse/serialize is idempotent. Returns one of:
+  //   "DECODE_ERR"          — the bytes were rejected
+  //   "ROUNDTRIP_FAIL:..."  — parsed, but re-serializing and re-parsing did
+  //                           not round-trip (library invariant violation;
+  //                           the driver treats this as fatal even with a
+  //                           single implementing module)
+  //   "<aggpub_hex>;<ser_hex>" — aggregated compressed pubkey and canonical
+  //                           serialization, in hex
+  virtual std::optional<std::string>
+  musig2_keyagg_ctx(std::span<const uint8_t> buffer) const;
+
   virtual ~BaseModule() noexcept;
 };
 } // namespace bitcoinfuzz
