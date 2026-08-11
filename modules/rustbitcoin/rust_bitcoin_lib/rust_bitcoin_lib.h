@@ -21,3 +21,5 @@ extern "C" char *rust_bitcoin_roundtrip_ellswift(const uint8_t *data,
                                                  size_t len);
 extern "C" char *rust_bitcoin_merkle_root_compute(const uint8_t *data,
                                                   size_t len);
+extern "C" char *rust_bitcoin_partial_merkle_tree(const uint8_t *data,
+                                                  size_t len);

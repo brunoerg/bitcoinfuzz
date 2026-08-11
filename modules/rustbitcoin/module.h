@@ -36,6 +36,8 @@ public:
   roundtrip_ellswift(std::span<const uint8_t> privkey) const override;
   std::optional<std::string> merkle_root_compute(
       const std::vector<std::vector<uint8_t>> &hashes) const override;
+  std::optional<std::string>
+  partial_merkle_tree(std::span<const uint8_t> buffer) const override;
   ~Rustbitcoin() noexcept override = default;
 };
 

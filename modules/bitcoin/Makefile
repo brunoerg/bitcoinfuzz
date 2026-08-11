@@ -84,6 +84,7 @@ BITCOIN_SRCS := \
     key.cpp \
     key_io.cpp \
     logging.cpp \
+    merkleblock.cpp \
     musig.cpp \
     netaddress.cpp \
     outputtype.cpp \

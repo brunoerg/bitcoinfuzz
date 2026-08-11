@@ -293,6 +293,10 @@ jobs:
             target: "silentpayments_create_outputs"
             cxxflags: "-DBDK_SP -DBLUEWALLET_SP -DSPDK -DSECP256K1"
             asan_options: "detect_leaks=0:detect_container_overflow=0"
+          - corpus: "partial_merkle_tree"
+            target: "partial_merkle_tree"
+            cxxflags: "-DBITCOIN_CORE -DRUST_BITCOIN"
+            asan_options: "detect_leaks=0:detect_container_overflow=0"
 
     steps:
       - name: Checkout repo

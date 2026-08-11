@@ -150,6 +150,19 @@ std::optional<std::string> Rustbitcoin::merkle_root_compute(
   auto result_ptr = rust_bitcoin_merkle_root_compute(flat.data(), flat.size());
   if (result_ptr == nullptr)
     return std::nullopt;
+
+  std::string result(result_ptr);
+  free_c_string(result_ptr);
+  return result;
+}
+
+std::optional<std::string>
+Rustbitcoin::partial_merkle_tree(std::span<const uint8_t> buffer) const {
+  auto result_ptr =
+      rust_bitcoin_partial_merkle_tree(buffer.data(), buffer.size());
+  if (result_ptr == nullptr)
+    return std::nullopt;
+
   std::string result(result_ptr);
   free_c_string(result_ptr);
   return result;
