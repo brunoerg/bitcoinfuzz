@@ -486,6 +486,22 @@ services:
     volumes:
       - ./docker:/app/data
 
+  sighash_compute:
+    build:
+      context: .
+      tags:
+        - bitcoinfuzz:sighash_compute
+      args:
+        CXXFLAGS: "-DBITCOIN_CORE -DRUST_BITCOIN -DBTCD -DGOCOIN"
+        FUZZ: sighash_compute
+    environment:
+      MODULES: ${MODULES:-}
+      LIBFUZZ_DETECT_LEAKS: 0
+      ASAN_OPTIONS: detect_leaks=0
+    env_file: .env
+    volumes:
+      - ./docker:/app/data
+
   musig2_key_agg:
     build:
       context: .

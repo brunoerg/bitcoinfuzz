@@ -110,6 +110,15 @@ extern int GocoinEvalScript(ByteArray scriptData, uint32_t flags, size_t version
 // Output: "<root_hex>;mutated=0|1" with the root in display byte order.
 //
 extern char* GocoinMerkleRootCompute(ByteArray data);
+// GocoinSighashCompute computes the legacy (SIGVERSION_BASE) or segwit v0
+// (BIP143) signature hash for an input, emulating gocoin's interpreter:
+// truncate the script after the n-th executed OP_CODESEPARATOR and, for
+// legacy, remove the pushed signature being checked.
+//
+// Output: digest in display byte order, or nil when the input class is
+// unsupported (tx parse failure or no inputs).
+//
+extern char* GocoinSighashCompute(ByteArray txData, ByteArray scriptData, ByteArray sigData, uint32_t inputIndex, uint32_t nCodesep, uint64_t amount, uint32_t sighashType, int isV0);
 
 // GocoinFreeString frees a C string that was allocated by Go.
 // Must be called to prevent memory leaks.

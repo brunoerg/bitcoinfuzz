@@ -433,6 +433,58 @@ std::optional<std::string> Bitcoin::merkle_root_compute(
   return root.ToString() + ";mutated=" + (mutated ? "1" : "0");
 }
 
+std::optional<std::string>
+Bitcoin::sighash_compute(const SighashComputeInput &input) const {
+  CMutableTransaction mutable_tx;
+  DataStream ds{input.tx_bytes};
+  try {
+    ds >> TX_WITH_WITNESS(mutable_tx);
+  } catch (const std::ios_base::failure &e) {
+    return std::nullopt;
+  }
+
+  if (mutable_tx.vin.empty())
+    return std::nullopt;
+  CTransaction tx{mutable_tx};
+  const unsigned int n_in{input.input_index %
+                          static_cast<uint32_t>(tx.vin.size())};
+
+  // Truncate the script right after the n-th OP_CODESEPARATOR, using Core's
+  // own script iterator (mirrors pbegincodehash in EvalScript/EvalChecksig).
+  const CScript script(input.script.begin(), input.script.end());
+  size_t script_begin{0};
+  if (input.n_codesep > 0) {
+    uint32_t seen{0};
+    size_t last_codesep_end{0};
+    CScript::const_iterator pc{script.begin()};
+    opcodetype opcode;
+    while (script.GetOp(pc, opcode)) {
+      if (opcode == OP_CODESEPARATOR) {
+        last_codesep_end = pc - script.begin();
+        if (++seen == input.n_codesep)
+          break;
+      }
+    }
+    // If the script contains fewer than n_codesep separators, clamp to the
+    // last one found (0 here means none found, i.e. no truncation).
+    script_begin = last_codesep_end;
+  }
+  CScript script_code(script.begin() + script_begin, script.end());
+
+  // Legacy: drop the signature being checked from the script code, exactly
+  // like EvalChecksigPreTapscript does. Segwit v0 keeps it as-is (BIP143).
+  if (!input.is_segwit_v0 && !input.sig_to_delete.empty()) {
+    FindAndDelete(script_code, CScript() << input.sig_to_delete);
+  }
+
+  const uint256 sighash{SignatureHash(
+      script_code, tx, n_in, static_cast<int32_t>(input.sighash_type),
+      CAmount(input.amount),
+      input.is_segwit_v0 ? SigVersion::WITNESS_V0 : SigVersion::BASE)};
+
+  return sighash.ToString();
+}
+
 std::optional<std::string> Bitcoin::address_parse(std::string str) const {
   static bool initialized = false;
   if (!initialized) {

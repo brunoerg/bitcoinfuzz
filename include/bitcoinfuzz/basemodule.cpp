@@ -183,6 +183,11 @@ std::optional<std::string> BaseModule::merkle_root_compute(
 }
 
 std::optional<std::string>
+BaseModule::sighash_compute(const SighashComputeInput & /*input*/) const {
+  return std::nullopt;
+}
+
+std::optional<std::string>
 BaseModule::bip32_derive_from_path(std::span<const uint8_t> /*buffer*/) const {
   return std::nullopt;
 }

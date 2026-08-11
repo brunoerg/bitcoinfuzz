@@ -11,6 +11,7 @@ typedef struct {
 */
 import "C"
 import (
+	"bytes"
 	"unsafe"
 
 	"github.com/piotrnar/gocoin/lib/btc"
@@ -170,6 +171,252 @@ func GocoinMerkleRootCompute(data C.ByteArray) *C.char {
 		mutatedFlag = "1"
 	}
 	return C.CString(btc.NewUint256(root).String() + ";mutated=" + mutatedFlag)
+}
+
+// gocoinTruncateAfterCodesep returns the subscript starting right after the
+// n-th OP_CODESEPARATOR (0 = no truncation). If the script contains fewer
+// than n separators, it truncates after the last one. Mirrors pbegincodehash
+// in gocoin's/Bitcoin Core's script interpreter.
+func gocoinTruncateAfterCodesep(script []byte, n uint32) []byte {
+	if n == 0 {
+		return script
+	}
+	var seen uint32
+	start := 0
+	idx := 0
+	for idx < len(script) {
+		op, _, consumed, err := btc.GetOpcode(script[idx:])
+		if err != nil {
+			break
+		}
+		idx += consumed
+		if op == 0xab { // OP_CODESEPARATOR
+			start = idx
+			seen++
+			if seen == n {
+				break
+			}
+		}
+	}
+	return script[start:]
+}
+
+// gocoinPushEncode returns the canonical (minimal) script push encoding of
+// data, i.e. what CScript() << data produces in Bitcoin Core.
+func gocoinPushEncode(data []byte) []byte {
+	n := len(data)
+	out := make([]byte, 0, n+5)
+	switch {
+	case n < 0x4c:
+		out = append(out, byte(n))
+	case n <= 0xff:
+		out = append(out, 0x4c, byte(n))
+	case n <= 0xffff:
+		out = append(out, 0x4d, byte(n), byte(n>>8))
+	default:
+		out = append(out, 0x4e, byte(n), byte(n>>8), byte(n>>16), byte(n>>24))
+	}
+	return append(out, data...)
+}
+
+// gocoinFindAndDelete is an exact port of Bitcoin Core's
+// FindAndDelete(script, CScript() << sig). gocoin's own equivalent (delSig)
+// is not exported, so the interpreter's sig-removal step is emulated here
+// with Core semantics; gocoin's native delSig is therefore NOT what is being
+// compared by this target.
+func gocoinFindAndDelete(script, sig []byte) []byte {
+	if len(sig) == 0 || len(script) == 0 {
+		return script
+	}
+	b := gocoinPushEncode(sig)
+	var result []byte
+	pc, pc2, found := 0, 0, 0
+	for {
+		result = append(result, script[pc2:pc]...)
+		for len(script)-pc >= len(b) && bytes.Equal(script[pc:pc+len(b)], b) {
+			pc += len(b)
+			found++
+		}
+		pc2 = pc
+		// Advance past one opcode (Bitcoin Core CScript::GetOp semantics).
+		if pc >= len(script) {
+			break
+		}
+		_, _, consumed, err := btc.GetOpcode(script[pc:])
+		if err != nil {
+			break
+		}
+		pc += consumed
+	}
+	if found == 0 {
+		return script
+	}
+	return append(result, script[pc2:]...)
+}
+
+// readVlen reads a CompactSize-style varint like gocoin's VLen, returning the
+// value and the number of bytes consumed (0 on truncation).
+func readVlen(b []byte, off int) (int, int) {
+	if off >= len(b) {
+		return 0, 0
+	}
+	c := b[off]
+	switch {
+	case c < 0xfd:
+		return int(c), 1
+	case c == 0xfd:
+		if off+3 > len(b) {
+			return 0, 0
+		}
+		return int(b[off+1]) | int(b[off+2])<<8, 3
+	case c == 0xfe:
+		if off+5 > len(b) {
+			return 0, 0
+		}
+		return int(b[off+1]) | int(b[off+2])<<8 | int(b[off+3])<<16 | int(b[off+4])<<24, 5
+	default:
+		if off+9 > len(b) {
+			return 0, 0
+		}
+		v := uint64(b[off+1]) | uint64(b[off+2])<<8 | uint64(b[off+3])<<16 | uint64(b[off+4])<<24 |
+			uint64(b[off+5])<<32 | uint64(b[off+6])<<40 | uint64(b[off+7])<<48 | uint64(b[off+8])<<56
+		if v > uint64(len(b)) { // guard: counts larger than the buffer can never fit
+			return 0, 0
+		}
+		return int(v), 9
+	}
+}
+
+// preflightTx walks a serialized transaction checking that every declared
+// count and data length fits within the buffer. gocoin's NewTx allocates
+// slices directly from untrusted CompactSize counts (make([]*TxIn, n)), so
+// feeding it unvalidated bytes lets a tiny input trigger multi-GB
+// allocations. Inputs failing this walk are skipped (nil) instead.
+func preflightTx(b []byte) bool {
+	off := 0
+	need := func(n int) bool { return off+n <= len(b) }
+	if !need(4) {
+		return false
+	}
+	off += 4 // version
+	segwit := false
+	if need(2) && b[off] == 0 && b[off+1] == 1 {
+		segwit = true
+		off += 2
+	}
+	nIn, n := readVlen(b, off)
+	if n == 0 {
+		return false
+	}
+	off += n
+	for i := 0; i < nIn; i++ {
+		if !need(36) { // prevout hash + vout
+			return false
+		}
+		off += 36
+		sl, m := readVlen(b, off)
+		if m == 0 {
+			return false
+		}
+		off += m
+		if !need(sl + 4) { // scriptSig + sequence
+			return false
+		}
+		off += sl + 4
+	}
+	nOut, n := readVlen(b, off)
+	if n == 0 {
+		return false
+	}
+	off += n
+	for i := 0; i < nOut; i++ {
+		if !need(8) { // value
+			return false
+		}
+		off += 8
+		sl, m := readVlen(b, off)
+		if m == 0 {
+			return false
+		}
+		off += m
+		if !need(sl) { // pk_script
+			return false
+		}
+		off += sl
+	}
+	if segwit {
+		for i := 0; i < nIn; i++ {
+			cnt, m := readVlen(b, off)
+			if m == 0 {
+				return false
+			}
+			off += m
+			for j := 0; j < cnt; j++ {
+				il, k := readVlen(b, off)
+				if k == 0 {
+					return false
+				}
+				off += k
+				if !need(il) {
+					return false
+				}
+				off += il
+			}
+		}
+	}
+	return need(4) // locktime
+}
+
+// GocoinSighashCompute computes the legacy (SIGVERSION_BASE) or segwit v0
+// (BIP143) signature hash for an input, emulating gocoin's interpreter:
+// truncate the script after the n-th executed OP_CODESEPARATOR and, for
+// legacy, remove the pushed signature being checked.
+//
+// Output: digest in display byte order, or nil when the input class is
+// unsupported (tx parse failure or no inputs).
+//
+//export GocoinSighashCompute
+func GocoinSighashCompute(txData C.ByteArray, scriptData C.ByteArray, sigData C.ByteArray, inputIndex C.uint32_t, nCodesep C.uint32_t, amount C.uint64_t, sighashType C.uint32_t, isV0 C.int) (res *C.char) {
+	// gocoin can panic on malformed structures; treat a panic as "unsupported
+	// input" so the driver simply skips this module.
+	defer func() {
+		if r := recover(); r != nil {
+			res = nil
+		}
+	}()
+
+	txBytes := C.GoBytes(unsafe.Pointer(txData.data), C.int(txData.length))
+	if !preflightTx(txBytes) {
+		return nil
+	}
+	tx, _ := btc.NewTx(txBytes)
+	if tx == nil || len(tx.TxIn) == 0 {
+		return nil
+	}
+	// WitnessSigHash uses the cached-hash fields in the embedded TxVerVars,
+	// which NewTx leaves unallocated.
+	tx.AllocVerVars()
+	idx := int(uint32(inputIndex) % uint32(len(tx.TxIn)))
+
+	script := C.GoBytes(unsafe.Pointer(scriptData.data), C.int(scriptData.length))
+	sig := C.GoBytes(unsafe.Pointer(sigData.data), C.int(sigData.length))
+
+	script = gocoinTruncateAfterCodesep(script, uint32(nCodesep))
+
+	var digest []byte
+	if isV0 == 0 {
+		script = gocoinFindAndDelete(script, sig)
+		digest = tx.SignatureHash(script, idx, int32(sighashType))
+	} else {
+		digest = tx.WitnessSigHash(script, uint64(amount), idx, int32(sighashType))
+	}
+	if len(digest) != 32 {
+		return nil
+	}
+
+	// Digest is in internal byte order; display it reversed like
+	// uint256::ToString / Uint256.String.
+	return C.CString(btc.NewUint256(digest).String())
 }
 
 // GocoinFreeString frees a C string that was allocated by Go.

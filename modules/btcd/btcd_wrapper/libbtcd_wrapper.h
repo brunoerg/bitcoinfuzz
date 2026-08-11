@@ -115,6 +115,18 @@ extern void BTCDFreeString(char* ptr);
 // Output: "<root_hex>;mutated=0|1" with the root in display byte order.
 //
 extern char* BTCDMerkleRootCompute(ByteArray data);
+// BTCDSighashCompute computes the legacy (SigVersion::BASE) or segwit v0
+// (BIP143) signature hash for an input, emulating btcd's interpreter:
+// truncate the script after the n-th executed OP_CODESEPARATOR and, for
+// legacy, remove the pushed signature being checked.
+//
+// Input: txData is a serialized transaction; script the scriptCode with
+// code separators intact; sigData the signature blob to delete (legacy only).
+// Output: digest in display byte order, or nil when the input class is
+// unsupported (tx parse failure, no inputs, or btcd's exported sighash API
+// rejecting an unparseable script — the driver compares other modules then).
+//
+extern char* BTCDSighashCompute(ByteArray txData, ByteArray scriptData, ByteArray sigData, uint32_t inputIndex, uint32_t nCodesep, uint64_t amount, uint32_t sighashType, int isV0);
 extern char* BTCDTransactionEval(ByteArray data);
 extern char* BTCDParsePSBT(ByteArray data);
 extern char* BTCDAddress(ByteArray data);

@@ -137,6 +137,26 @@ std::optional<std::string> Btcd::merkle_root_compute(
   BTCDFreeString(result);
   return res;
 }
+
+std::optional<std::string>
+Btcd::sighash_compute(const SighashComputeInput &input) const {
+  auto to_byte_array = [](const std::vector<uint8_t> &v) {
+    return ByteArray{
+        .data = reinterpret_cast<char *>(const_cast<uint8_t *>(v.data())),
+        .length = static_cast<int>(v.size())};
+  };
+
+  char *result = BTCDSighashCompute(
+      to_byte_array(input.tx_bytes), to_byte_array(input.script),
+      to_byte_array(input.sig_to_delete), input.input_index, input.n_codesep,
+      input.amount, input.sighash_type, input.is_segwit_v0 ? 1 : 0);
+  if (!result)
+    return std::nullopt;
+
+  std::string res(result);
+  BTCDFreeString(result);
+  return res;
+}
 std::optional<std::string>
 Btcd::bip32_master_keygen(std::span<const uint8_t> buffer) const {
   ByteArray seed;
