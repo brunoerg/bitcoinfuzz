@@ -138,6 +138,18 @@ ifneq ($(findstring -DRUSTCRYPTO_AES,$(BASE_CXXFLAGS) $(CXXFLAGS)),)
 	MODULES += modules/rustcryptoaes/module.a
 endif
 
+ifneq ($(findstring -DBOOST_MULTI_INDEX,$(BASE_CXXFLAGS) $(CXXFLAGS)),)
+	MODULES += modules/boostmultiindex/module.a
+endif
+
+ifneq ($(findstring -DTMI2,$(BASE_CXXFLAGS) $(CXXFLAGS)),)
+	MODULES += modules/tmi2/module.a
+endif
+
+ifneq ($(findstring -DSTD_CONTAINERS,$(BASE_CXXFLAGS) $(CXXFLAGS)),)
+	MODULES += modules/stdcontainers/module.a
+endif
+
 ifeq ($(UNAME_S), Darwin)
 	LDFLAGS = -framework CoreFoundation -Wl,-ld_classic
 endif
