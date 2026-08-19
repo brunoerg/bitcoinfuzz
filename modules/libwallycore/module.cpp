@@ -4,6 +4,7 @@
 #define WALLY_ABI_NO_ELEMENTS
 extern "C" {
 #include <ccan/str/hex/hex.h>
+#include <wally_address.h>
 #include <wally_bip32.h>
 #include <wally_psbt.h>
 }
@@ -574,6 +575,51 @@ std::optional<std::string> LibwallyCore::bip32_deserialize_extended_key(
              << static_cast<int>(key.pub_key[i]);
   }
   return result.str();
+}
+
+std::optional<std::string>
+LibwallyCore::bech32_segwit_roundtrip(const Bech32SegwitInput &input) const {
+  // libwally takes and returns the scriptPubKey rather than a bare witness
+  // version and program: OP_0 / OP_1..OP_16, a direct push opcode, then the
+  // program. Programs here are at most 40 bytes, so the push is always a
+  // single-byte length.
+  std::vector<unsigned char> script_pubkey;
+  script_pubkey.reserve(input.program.size() + 2);
+  script_pubkey.push_back(
+      input.witver == 0 ? 0x00
+                        : static_cast<unsigned char>(0x50 + input.witver));
+  script_pubkey.push_back(static_cast<unsigned char>(input.program.size()));
+  script_pubkey.insert(script_pubkey.end(), input.program.begin(),
+                       input.program.end());
+
+  char *encoded = nullptr;
+  if (wally_addr_segwit_from_bytes(script_pubkey.data(), script_pubkey.size(),
+                                   input.hrp.c_str(), 0,
+                                   &encoded) != WALLY_OK ||
+      encoded == nullptr)
+    return "ENC:FAIL";
+
+  const std::string address{encoded};
+  wally_free_string(encoded);
+
+  unsigned char decoded[WALLY_SEGWIT_ADDRESS_PUBKEY_MAX_LEN];
+  size_t written = 0;
+  if (wally_addr_segwit_to_bytes(address.c_str(), input.hrp.c_str(), 0, decoded,
+                                 sizeof(decoded), &written) != WALLY_OK ||
+      written < 2)
+    return "ENC:" + address + "|DEC:FAIL";
+
+  const unsigned char version_opcode = decoded[0];
+  const unsigned int version =
+      version_opcode == 0x00 ? 0u : version_opcode - 0x50u;
+
+  std::ostringstream program;
+  program << std::hex << std::setfill('0');
+  for (size_t i = 2; i < written; ++i)
+    program << std::setw(2) << static_cast<unsigned int>(decoded[i]);
+
+  return "ENC:" + address + "|DEC:v" + std::to_string(version) + ":" +
+         program.str();
 }
 
 } // namespace module

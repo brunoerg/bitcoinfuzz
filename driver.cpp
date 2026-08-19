@@ -195,29 +195,54 @@ void Driver::AddressParseTarget(std::span<const uint8_t> buffer) const {
   FuzzedDataProvider provider(buffer.data(), buffer.size());
   std::string address{provider.ConsumeRemainingBytesAsString()};
 
+  // Two independent comparison chains.
+  //
+  // Segwit addresses whose version and program size match none of the defined
+  // output types -- witness versions 2..16, and version 1 programs that are not
+  // 32 bytes -- land in the second chain, tagged "WITNESS_UNKNOWN:v<version>:
+  // <program>". Whether to decode such an address at all is a policy call
+  // rather than a consensus one (btcd refuses outright, Core hands back a
+  // WitnessUnknown destination), so an accept-versus-reject split there is not
+  // a bug and belongs in its own chain. What must still agree is the version
+  // and program recovered by the modules that do accept -- which is precisely
+  // the BIP-350 bech32m boundary, and which the previous blanket "UNK:" skip
+  // dropped from the comparison entirely.
+  //
+  // "UNK:" is still skipped. It is what modules report when they cannot
+  // classify a result at all, and it is not reached along a single shared code
+  // path: libbitcoin also uses it for legacy addresses carrying a non-mainnet
+  // version byte, which the mainnet-pinned modules reject as "INVALID".
   std::optional<std::string> last_response{std::nullopt};
   std::string last_module_name;
+  std::optional<std::string> last_witness_unknown{std::nullopt};
+  std::string last_witness_unknown_module_name;
 
   for (auto &module : modules) {
     std::optional<std::string> res{module.second->address_parse(address)};
     if (!res.has_value() || res->starts_with("UNK:"))
       continue;
 
+    const bool witness_unknown{res->starts_with("WITNESS_UNKNOWN:")};
+    std::optional<std::string> &last{witness_unknown ? last_witness_unknown
+                                                     : last_response};
+    std::string &last_name{witness_unknown ? last_witness_unknown_module_name
+                                           : last_module_name};
+
     LogResponse(module.first, *res);
 
-    if (last_response.has_value()) {
-      if (*res != *last_response) {
+    if (last.has_value()) {
+      if (*res != *last) {
         std::cout << "Input address: " << address << "\n";
-        std::cout << "MISMATCH DETECTED between " << last_module_name << " and "
+        std::cout << "MISMATCH DETECTED between " << last_name << " and "
                   << module.first << "!"
                   << "\n";
-        std::cout << "  " << last_module_name << ": " << *last_response << "\n";
-        std::cout << "  " << module.first << ": " << *res << "\n";
-        assert(*res == *last_response);
+        std::cout << "  " << last_name << ": " << *last << "\n";
+        std::cout << "  " << module.first << ": " << *res << std::endl;
+        assert(*res == *last);
       }
     }
-    last_response = *res;
-    last_module_name = module.first;
+    last = *res;
+    last_name = module.first;
   }
 }
 
@@ -1018,6 +1043,140 @@ void Driver::SilentPaymentsCreateOutputsTarget(
   }
 }
 
+namespace {
+// Number of 5-bit groups in the data part of a segwit address: one group for
+// the witness version, plus the zero-padded regrouping of the program.
+size_t Bech32DataLength(size_t program_len) {
+  return 1 + (program_len * 8 + 4) / 5;
+}
+
+std::string HexString(std::span<const uint8_t> bytes) {
+  static constexpr char kDigits[] = "0123456789abcdef";
+  std::string out;
+  out.reserve(bytes.size() * 2);
+  for (const uint8_t b : bytes) {
+    out.push_back(kDigits[b >> 4]);
+    out.push_back(kDigits[b & 0x0f]);
+  }
+  return out;
+}
+} // namespace
+
+void Driver::Bech32RoundtripTarget(std::span<const uint8_t> buffer) const {
+  FuzzedDataProvider provider(buffer.data(), buffer.size());
+
+  // A quarter of the inputs drive the bare 5<->8 bit regrouping primitive; the
+  // rest drive the full segwit address round-trip.
+  if (provider.ConsumeIntegralInRange<uint8_t>(0, 3) == 0) {
+    Bech32ConvertBitsInput input;
+    // 5->8 is the decode direction (unpacking base32 groups into bytes), 8->5
+    // the encode direction.
+    const bool unpack{provider.ConsumeBool()};
+    input.from_bits = unpack ? 5 : 8;
+    input.to_bits = unpack ? 8 : 5;
+    input.pad = provider.ConsumeBool();
+    // Unmasked data lets 5-bit groups carry values above 31, which no bech32
+    // string can produce but which callers of these public helpers can pass in.
+    // An implementation has to reject those; one that truncates them instead
+    // maps two distinct inputs onto one output. Masked is the default so the
+    // budget is not spent entirely on the out-of-range case.
+    const bool mask{!provider.ConsumeBool()};
+    input.data = provider.ConsumeRemainingBytes<uint8_t>();
+    if (mask && input.from_bits == 5) {
+      for (uint8_t &b : input.data)
+        b &= 0x1f;
+    }
+
+    std::optional<std::string> last_response{std::nullopt};
+    std::string last_module_name;
+
+    for (auto &module : modules) {
+      std::optional<std::string> res{module.second->bech32_convert_bits(input)};
+      if (!res.has_value())
+        continue;
+
+      LogResponse(module.first, *res);
+
+      if (last_response.has_value() && *res != *last_response) {
+        std::cout << "Input convert bits: " << static_cast<int>(input.from_bits)
+                  << "->" << static_cast<int>(input.to_bits)
+                  << " pad=" << (input.pad ? "1" : "0")
+                  << " data=" << HexString(input.data) << "\n";
+        std::cout << "MISMATCH DETECTED between " << last_module_name << " and "
+                  << module.first << "!" << "\n";
+        std::cout << "  " << last_module_name << ": " << *last_response << "\n";
+        std::cout << "  " << module.first << ": " << *res << std::endl;
+        assert(*res == *last_response);
+      }
+      last_response = *res;
+      last_module_name = module.first;
+    }
+    return;
+  }
+
+  Bech32SegwitInput input;
+  input.witver = provider.ConsumeIntegralInRange<uint8_t>(0, 16);
+  // BIP-141 fixes the version 0 program at 20 or 32 bytes. Generating only
+  // those keeps version 0 inputs valid instead of burning the budget on a
+  // length check every implementation performs before touching the checksum.
+  const size_t program_len{
+      input.witver == 0 ? (provider.ConsumeBool() ? 20u : 32u)
+                        : provider.ConsumeIntegralInRange<size_t>(2, 40)};
+  const size_t hrp_len{provider.ConsumeIntegralInRange<size_t>(1, 83)};
+
+  input.program = ConsumeFixedLengthByteVector(provider, program_len);
+  input.hrp.reserve(hrp_len);
+  for (size_t i = 0; i < hrp_len; ++i) {
+    // BIP-173 allows any US-ASCII character in [33,126] in the HRP. Uppercase
+    // is folded rather than rejected: an uppercase HRP makes the encoding
+    // invalid by definition and asserts inside some encoders, so it would only
+    // ever produce noise.
+    uint8_t c{provider.ConsumeIntegralInRange<uint8_t>(33, 126)};
+    if (c >= 'A' && c <= 'Z')
+      c += 'a' - 'A';
+    input.hrp.push_back(static_cast<char>(c));
+  }
+
+  // BIP-173 caps a segwit address at 90 characters. Over-cap inputs are still
+  // handed to every module -- an over-long HRP is exactly what walks an encoder
+  // off the end of a fixed-size output buffer -- but their responses are not
+  // compared: implementations legitimately split between refusing to encode and
+  // emitting a string their own decoder then rejects, and that split would bury
+  // the checksum divergences this target is looking for.
+  const size_t encoded_len{input.hrp.size() + 1 +
+                           Bech32DataLength(program_len) + 6};
+  const bool compare{encoded_len <= 90};
+
+  std::optional<std::string> last_response{std::nullopt};
+  std::string last_module_name;
+
+  for (auto &module : modules) {
+    std::optional<std::string> res{
+        module.second->bech32_segwit_roundtrip(input)};
+    if (!res.has_value())
+      continue;
+
+    LogResponse(module.first, *res);
+    if (!compare)
+      continue;
+
+    if (last_response.has_value() && *res != *last_response) {
+      std::cout << "Input hrp: " << input.hrp << "\n";
+      std::cout << "Input witness version: " << static_cast<int>(input.witver)
+                << "\n";
+      std::cout << "Input witness program: " << HexString(input.program)
+                << "\n";
+      std::cout << "MISMATCH DETECTED between " << last_module_name << " and "
+                << module.first << "!" << "\n";
+      std::cout << "  " << last_module_name << ": " << *last_response << "\n";
+      std::cout << "  " << module.first << ": " << *res << std::endl;
+      assert(*res == *last_response);
+    }
+    last_response = *res;
+    last_module_name = module.first;
+  }
+}
+
 void Driver::Run(const uint8_t *data, const size_t size,
                  const std::string &target) const {
   std::span<const uint8_t> buffer{data, size};
@@ -1097,6 +1256,8 @@ void Driver::Run(const uint8_t *data, const size_t size,
     this->Musig2SignSessionTarget(buffer);
   } else if (target == "silentpayments_create_outputs") {
     this->SilentPaymentsCreateOutputsTarget(buffer);
+  } else if (target == "bech32_roundtrip") {
+    this->Bech32RoundtripTarget(buffer);
   } else {
     std::cout << "Unknown target: " << target << std::endl;
     assert(false);

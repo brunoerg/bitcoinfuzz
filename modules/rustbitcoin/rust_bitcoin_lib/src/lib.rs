@@ -33,6 +33,10 @@ unsafe fn str_to_c_string(input: &str) -> *mut c_char {
     CString::new(input).unwrap().into_raw()
 }
 
+fn to_hex(bytes: &[u8]) -> String {
+    bytes.iter().map(|b| format!("{:02x}", b)).collect()
+}
+
 /// Returns true if `needle` appears in the `Display` output of `err` or any of
 /// its sources.
 ///
@@ -163,8 +167,23 @@ pub unsafe extern "C" fn rust_bitcoin_address_parse(address: *const c_char) -> *
                     Some(bitcoin::address::AddressType::P2wpkh) => "WPKH:",
                     Some(bitcoin::address::AddressType::P2wsh) => "WSH:",
                     Some(bitcoin::address::AddressType::P2tr) => "TR:",
-                    Some(_) => "UNK:",
-                    None => "UNK:",
+                    // Witness programs with no defined output type: versions
+                    // 2..16, and version 1 programs that are not taproot (P2A).
+                    // Reported with the decoded version and program rather than
+                    // as an opaque "UNK:", so the driver can still compare what
+                    // was decoded against the other implementations that accept
+                    // these addresses.
+                    _ => match addr.witness_program() {
+                        Some(program) => {
+                            let result = format!(
+                                "WITNESS_UNKNOWN:v{}:{}",
+                                program.version().to_num(),
+                                to_hex(program.program().as_bytes())
+                            );
+                            return str_to_c_string(&result);
+                        }
+                        None => "UNK:",
+                    },
                 };
 
                 let result = format!("{}{:}", prefix, addr);
@@ -599,4 +618,65 @@ pub unsafe extern "C" fn rust_bitcoin_roundtrip_ellswift(
     let encoded = ElligatorSwift::from_seckey(secret_key, None);
     let public_key = PublicKey::from_ellswift(encoded);
     str_to_c_string(&public_key.to_string())
+}
+
+/// Encodes a segwit address from a human-readable part, witness version and
+/// witness program, then decodes the result back with the same implementation.
+///
+/// # Safety
+/// `hrp` and `program` must point to at least `hrp_len` / `program_len`
+/// readable bytes, or be null when the corresponding length is zero.
+#[no_mangle]
+pub unsafe extern "C" fn rust_bitcoin_bech32_segwit_roundtrip(
+    hrp: *const u8,
+    hrp_len: usize,
+    witver: u8,
+    program: *const u8,
+    program_len: usize,
+) -> *mut c_char {
+    use bitcoin::bech32::segwit;
+    use bitcoin::bech32::{Fe32, Hrp};
+
+    let hrp_bytes = if hrp.is_null() || hrp_len == 0 {
+        &[][..]
+    } else {
+        slice::from_raw_parts(hrp, hrp_len)
+    };
+    let program_bytes = if program.is_null() || program_len == 0 {
+        &[][..]
+    } else {
+        slice::from_raw_parts(program, program_len)
+    };
+
+    let hrp = match std::str::from_utf8(hrp_bytes)
+        .ok()
+        .and_then(|s| Hrp::parse(s).ok())
+    {
+        Some(hrp) => hrp,
+        None => return str_to_c_string("ENC:FAIL"),
+    };
+    // The witness version travels as a single base32 field element.
+    let version = match Fe32::try_from(witver) {
+        Ok(version) => version,
+        Err(_) => return str_to_c_string("ENC:FAIL"),
+    };
+
+    // segwit::encode applies the BIP-173 90 character limit and the witness
+    // program length rules itself, so no extra checks are needed here.
+    let address = match segwit::encode(hrp, version, program_bytes) {
+        Ok(address) => address,
+        Err(_) => return str_to_c_string("ENC:FAIL"),
+    };
+
+    match segwit::decode(&address) {
+        Ok((decoded_hrp, decoded_version, decoded_program)) if decoded_hrp == hrp => {
+            str_to_c_string(&format!(
+                "ENC:{}|DEC:v{}:{}",
+                address,
+                decoded_version.to_u8(),
+                to_hex(&decoded_program)
+            ))
+        }
+        _ => str_to_c_string(&format!("ENC:{}|DEC:FAIL", address)),
+    }
 }

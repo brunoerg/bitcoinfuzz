@@ -99,25 +99,12 @@ extern char* BTCDAddrv2(ByteArray addrv2Data);
 extern char* BTCDScriptAsm(ByteArray scriptData);
 extern char* BTCDDesBlock(ByteArray scriptData);
 extern void BTCDFreeString(char* ptr);
-
-// BTCDMerkleRootCompute computes the merkle root over a list of raw 32-byte
-// hashes (internal byte order, concatenated) and reports whether a duplicated
-// subtree (CVE-2012-2459) was detected.
-//
-// btcd's exported merkle entry points (CalcMerkleRoot, BuildMerkleTreeStore)
-// operate on []*btcutil.Tx rather than raw hashes, so the tree reduction
-// below mirrors Bitcoin Core's ComputeMerkleRoot (duplicate the last hash on
-// odd levels, hash pairs left to right) while the consensus-critical pair
-// hashing itself is btcd's exported HashMerkleBranches (double SHA256 of the
-// concatenated branches).
-//
-// Input: data is n*32 bytes (n >= 1; the driver never feeds empty lists).
-// Output: "<root_hex>;mutated=0|1" with the root in display byte order.
-//
 extern char* BTCDMerkleRootCompute(ByteArray data);
 extern char* BTCDTransactionEval(ByteArray data);
 extern char* BTCDParsePSBT(ByteArray data);
 extern char* BTCDAddress(ByteArray data);
+extern char* BTCDBech32SegwitRoundtrip(ByteArray hrpData, int witver, ByteArray progData);
+extern char* BTCDBech32ConvertBits(ByteArray data, int fromBits, int toBits, int pad);
 extern char* BTCDBip32MasterKeygen(ByteArray data);
 extern char* BTCDSignSchnorr(ByteArray privKey, ByteArray hash, ByteArray aux);
 extern char* BTCDDecodeEllswift(ByteArray buffer);
