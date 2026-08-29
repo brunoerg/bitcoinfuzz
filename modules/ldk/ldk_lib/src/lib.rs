@@ -144,12 +144,6 @@ pub unsafe extern "C" fn ldk_des_invoice(input: *const std::os::raw::c_char) -> 
 
             str_to_c_string(&result)
         }
-        // Handle invoices without payment secrets by returning null
-        // This is needed because some Lightning implementations don't require payment secrets,
-        // and we need to maintain compatibility with these implementations
-        Err(ParseOrSemanticError::SemanticError(Bolt11SemanticError::NoPaymentSecret)) => {
-            std::ptr::null_mut()
-        }
         // Handle invoices with multiple payment hashes by returning null
         // This is needed because some Lightning implementations don't require payment to have only one hash,
         // and we need to maintain compatibility with these implementations
