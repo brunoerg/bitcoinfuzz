@@ -64,9 +64,8 @@ $(KERNEL_LIB): bitcoin-sync
 		-DENABLE_WALLET=OFF \
 		-DBUILD_WALLET_TOOL=OFF \
 		-DENABLE_EXTERNAL_SIGNER=OFF \
-		-DSANITIZERS=fuzzer \
-	cd $(BITCOIN_DIR) && \
-	cmake --build build-kernel -j"$$(nproc)" --target bitcoinkernel
+		-DSANITIZERS=fuzzer
+	cmake --build $(KERNEL_BUILD_DIR) -j"$$(nproc)" --target bitcoinkernel
 
 bitcoin-sync:
 	@if [ ! -d "$(BITCOIN_DIR)/.git" ]; then \

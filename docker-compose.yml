@@ -203,7 +203,7 @@ services:
       tags:
         - bitcoinfuzz:transaction_eval
       args:
-        CXXFLAGS: "-DBITCOIN_CORE -DBTCD"
+        CXXFLAGS: "-DBITCOIN_CORE -DBITCOINKERNEL -DBTCD"
         FUZZ: transaction_eval
     env_file: .env
     environment:

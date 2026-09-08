@@ -259,7 +259,7 @@ jobs:
             setup_java: "true"
           - corpus: "transaction_eval"
             target: "transaction_eval"
-            cxxflags: "-DBITCOIN_CORE -DBTCD -DLIBBITCOIN_SYSTEM"
+            cxxflags: "-DBITCOIN_CORE -DBITCOINKERNEL -DBTCD -DLIBBITCOIN_SYSTEM"
             asan_options: "detect_leaks=0:detect_container_overflow=0"
           - corpus: "decode_ellswift"
             target: "decode_ellswift"
