@@ -818,6 +818,110 @@ void Driver::MerkleRootComputeTarget(std::span<const uint8_t> buffer) const {
   }
 }
 
+// Returns false when the script has a truncated data push (the only parse
+// failure mode of a script). Sighash preimage construction differs across
+// libraries in how the unparseable tail is treated for legacy scripts
+// (Bitcoin Core's serializer emits the truncated push's opcode/length header
+// bytes, gocoin drops them, btcd's exported API rejects the script), which
+// is a separate known divergence class; gating it here keeps the target
+// focused on the comparable, parseable-script space.
+static bool ScriptParsesCleanly(std::span<const uint8_t> script) {
+  size_t i = 0;
+  while (i < script.size()) {
+    const uint8_t op = script[i++];
+    size_t push_len = 0;
+    if (op < 0x4c) {
+      push_len = op;
+    } else if (op == 0x4c) {
+      if (script.size() - i < 1)
+        return false;
+      push_len = script[i];
+      i += 1;
+    } else if (op == 0x4d) {
+      if (script.size() - i < 2)
+        return false;
+      push_len = static_cast<size_t>(script[i]) |
+                 (static_cast<size_t>(script[i + 1]) << 8);
+      i += 2;
+    } else if (op == 0x4e) {
+      if (script.size() - i < 4)
+        return false;
+      push_len = static_cast<size_t>(script[i]) |
+                 (static_cast<size_t>(script[i + 1]) << 8) |
+                 (static_cast<size_t>(script[i + 2]) << 16) |
+                 (static_cast<size_t>(script[i + 3]) << 24);
+      i += 4;
+    } else {
+      continue; // non-push opcode
+    }
+    if (push_len > script.size() - i)
+      return false;
+    i += push_len;
+  }
+  return true;
+}
+
+void Driver::SighashComputeTarget(std::span<const uint8_t> buffer) const {
+  FuzzedDataProvider provider(buffer.data(), buffer.size());
+
+  SighashComputeInput input;
+  // Integrals are consumed from the tail of the buffer, byte chunks from the
+  // front; keep this order fixed so the input layout is stable.
+  input.sighash_type = provider.ConsumeIntegral<uint32_t>();
+  input.amount = provider.ConsumeIntegral<uint64_t>();
+  input.input_index = provider.ConsumeIntegral<uint32_t>();
+  input.n_codesep = provider.ConsumeIntegral<uint32_t>();
+  const bool embed_sig = provider.ConsumeBool();
+  const uint32_t embed_pos = provider.ConsumeIntegral<uint32_t>();
+  input.is_segwit_v0 = provider.ConsumeBool();
+  input.script = provider.ConsumeBytes<uint8_t>(
+      provider.ConsumeIntegralInRange<size_t>(0, 4096));
+  input.sig_to_delete = provider.ConsumeBytes<uint8_t>(
+      provider.ConsumeIntegralInRange<size_t>(0, 100));
+  input.tx_bytes = provider.ConsumeRemainingBytes<uint8_t>();
+
+  // The legacy FindAndDelete path only triggers when the script actually
+  // contains a push of the signature being checked, which never happens by
+  // chance on random bytes. Deliberately splice a canonical push of
+  // sig_to_delete into the script so that code path is exercised. This is
+  // pure input construction: every module receives the same final script and
+  // still runs its own deletion logic.
+  if (embed_sig && !input.sig_to_delete.empty()) {
+    std::vector<uint8_t> push;
+    const size_t sig_size = input.sig_to_delete.size();
+    if (sig_size < 0x4c) {
+      push.push_back(static_cast<uint8_t>(sig_size));
+    } else {
+      // OP_PUSHDATA1 (sig_size is capped at 100 by construction)
+      push.push_back(0x4c);
+      push.push_back(static_cast<uint8_t>(sig_size));
+    }
+    push.insert(push.end(), input.sig_to_delete.begin(),
+                input.sig_to_delete.end());
+    const size_t pos =
+        std::min(static_cast<size_t>(embed_pos), input.script.size());
+    input.script.insert(input.script.begin() + pos, push.begin(), push.end());
+  }
+
+  // Legacy only: skip scripts with a truncated push (see ScriptParsesCleanly).
+  // The segwit v0 preimage commits to the script bytes verbatim, so it needs
+  // no such gate.
+  if (!input.is_segwit_v0 && !ScriptParsesCleanly(input.script))
+    return;
+
+  std::optional<std::string> last_response{std::nullopt};
+  std::string last_module_name;
+
+  for (auto &module : modules) {
+    std::optional<std::string> res{module.second->sighash_compute(input)};
+    if (!res.has_value())
+      continue;
+
+    VerifyMatchingResponse(last_response, last_module_name, module.first, *res,
+                           "Sighash computation failed");
+  }
+}
+
 void Driver::Bip32DeriveFromPathTarget(std::span<const uint8_t> buffer) const {
   FuzzedDataProvider provider(buffer.data(), buffer.size());
   std::string path{provider.ConsumeRemainingBytesAsString()};
@@ -1087,6 +1191,8 @@ void Driver::Run(const uint8_t *data, const size_t size,
     this->StumpModifyAddTarget(buffer);
   } else if (target == "merkle_root_compute") {
     this->MerkleRootComputeTarget(buffer);
+  } else if (target == "sighash_compute") {
+    this->SighashComputeTarget(buffer);
   } else if (target == "bip32_derive_from_path") {
     this->Bip32DeriveFromPathTarget(buffer);
   } else if (target == "musig2_key_agg") {

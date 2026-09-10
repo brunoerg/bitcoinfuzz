@@ -399,6 +399,229 @@ pub unsafe extern "C" fn rust_bitcoin_merkle_root_compute(
     }
 }
 
+/// Minimal port of Bitcoin Core's CScript::GetOp advance: returns the opcode
+/// and the offset just past it (including any pushed data), or None when the
+/// script ends mid-push.
+fn get_op(script: &[u8], pc: usize) -> Option<(u8, usize)> {
+    if pc >= script.len() {
+        return None;
+    }
+    let opcode = script[pc];
+    let mut i = pc + 1;
+    if opcode <= 0x4e {
+        // OP_PUSHDATA1/2/4 or a direct push (OP_0..OP_PUSHDATA4 range)
+        let n_size = if opcode < 0x4c {
+            opcode as usize
+        } else if opcode == 0x4c {
+            if script.len() - i < 1 {
+                return None;
+            }
+            let v = script[i] as usize;
+            i += 1;
+            v
+        } else if opcode == 0x4d {
+            if script.len() - i < 2 {
+                return None;
+            }
+            let v = u16::from_le_bytes([script[i], script[i + 1]]) as usize;
+            i += 2;
+            v
+        } else {
+            if script.len() - i < 4 {
+                return None;
+            }
+            let v = u32::from_le_bytes([script[i], script[i + 1], script[i + 2], script[i + 3]])
+                as usize;
+            i += 4;
+            v
+        };
+        if script.len() - i < n_size {
+            return None;
+        }
+        i += n_size;
+    }
+    Some((opcode, i))
+}
+
+/// Returns the subscript starting right after the n-th OP_CODESEPARATOR
+/// (0 = no truncation). If the script contains fewer than n separators,
+/// truncates after the last one. Mirrors pbegincodehash in the interpreter.
+fn truncate_after_codesep(script: &[u8], n: u32) -> &[u8] {
+    if n == 0 {
+        return script;
+    }
+    let mut seen = 0u32;
+    let mut start = 0usize;
+    let mut pc = 0usize;
+    while let Some((opcode, next)) = get_op(script, pc) {
+        if opcode == 0xab {
+            // OP_CODESEPARATOR
+            start = next;
+            seen += 1;
+            if seen == n {
+                break;
+            }
+        }
+        pc = next;
+    }
+    &script[start..]
+}
+
+/// Canonical (minimal) script push encoding of `data`, i.e. what
+/// CScript() << data produces in Bitcoin Core.
+fn push_encode(data: &[u8]) -> Vec<u8> {
+    let n = data.len();
+    let mut out = Vec::with_capacity(n + 5);
+    if n < 0x4c {
+        out.push(n as u8);
+    } else if n <= 0xff {
+        out.extend_from_slice(&[0x4c, n as u8]);
+    } else if n <= 0xffff {
+        out.push(0x4d);
+        out.extend_from_slice(&(n as u16).to_le_bytes());
+    } else {
+        out.push(0x4e);
+        out.extend_from_slice(&(n as u32).to_le_bytes());
+    }
+    out.extend_from_slice(data);
+    out
+}
+
+/// Exact port of Bitcoin Core's FindAndDelete(script, CScript() << sig):
+/// walks the script opcode by opcode and removes every occurrence of the
+/// canonical push encoding of `sig`, including matches starting mid-opcode
+/// after a previous deletion.
+///
+/// rust-bitcoin has no FindAndDelete equivalent (its sighash API documents
+/// that it does not support OP_CODESEPARATOR-era script munging), so the
+/// interpreter step is emulated here with Core semantics.
+fn find_and_delete(script: &[u8], sig: &[u8]) -> Vec<u8> {
+    if sig.is_empty() || script.is_empty() {
+        return script.to_vec();
+    }
+    let b = push_encode(sig);
+    let mut result: Vec<u8> = Vec::new();
+    let (mut pc, mut pc2, mut found) = (0usize, 0usize, 0usize);
+    loop {
+        result.extend_from_slice(&script[pc2..pc]);
+        while script.len() - pc >= b.len() && script[pc..pc + b.len()] == b[..] {
+            pc += b.len();
+            found += 1;
+        }
+        pc2 = pc;
+        match get_op(script, pc) {
+            Some((_, next)) => pc = next,
+            None => break,
+        }
+    }
+    if found == 0 {
+        return script.to_vec();
+    }
+    result.extend_from_slice(&script[pc2..]);
+    result
+}
+
+/// Removes all OP_CODESEPARATOR opcodes, like Bitcoin Core's
+/// CTransactionSignatureSerializer::SerializeScriptCode does for legacy
+/// sighashes.
+fn strip_codeseps(script: &[u8]) -> Vec<u8> {
+    if !script.contains(&0xab) {
+        return script.to_vec();
+    }
+    let mut out = Vec::with_capacity(script.len());
+    let mut pc = 0usize;
+    let mut seg_start = 0usize;
+    while let Some((opcode, next)) = get_op(script, pc) {
+        if opcode == 0xab {
+            out.extend_from_slice(&script[seg_start..pc]);
+            seg_start = next;
+        }
+        pc = next;
+    }
+    out.extend_from_slice(&script[seg_start..]);
+    out
+}
+
+/// Computes the legacy (SigVersion::BASE) or segwit v0 (BIP143) signature
+/// hash for an input. Returns the digest in display byte order.
+///
+/// rust-bitcoin's segwit v0 API takes a typed EcdsaSighashType and
+/// re-serializes its normalized value (EcdsaSighashType::to_u32) into the
+/// preimage, while Bitcoin Core hashes the raw u32 from the signature. For
+/// non-standard sighash bytes the two therefore differ *by API design*, so
+/// this wrapper skips them (returns null) for segwit v0 instead of
+/// manufacturing a permanent mismatch. The legacy API accepts a raw u32 and
+/// needs no such skip.
+#[no_mangle]
+pub unsafe extern "C" fn rust_bitcoin_sighash_compute(
+    tx_data: *const u8,
+    tx_len: usize,
+    script_data: *const u8,
+    script_len: usize,
+    sig_data: *const u8,
+    sig_len: usize,
+    input_index: u32,
+    n_codesep: u32,
+    amount: u64,
+    sighash_type: u32,
+    is_segwit_v0: bool,
+) -> *mut c_char {
+    let tx_slice = slice::from_raw_parts(tx_data, tx_len);
+    let tx: bitcoin::Transaction = match encode::deserialize_partial(tx_slice) {
+        Ok((tx, _)) => tx,
+        Err(_) => return ptr::null_mut(),
+    };
+    if tx.inputs.is_empty() {
+        return ptr::null_mut();
+    }
+    let idx = (input_index as usize) % tx.inputs.len();
+
+    let script = slice::from_raw_parts(script_data, script_len);
+    let script = truncate_after_codesep(script, n_codesep);
+
+    let mut cache = bitcoin::sighash::SighashCache::new(&tx);
+    let digest = if is_segwit_v0 {
+        // See doc comment: only the 6 standard types round-trip through the
+        // typed segwit-v0 API.
+        let standard = matches!(sighash_type, 0x01 | 0x02 | 0x03 | 0x81 | 0x82 | 0x83);
+        if !standard {
+            return ptr::null_mut();
+        }
+        let amount = match bitcoin::Amount::from_sat(amount) {
+            Ok(a) => a,
+            Err(_) => return ptr::null_mut(),
+        };
+        let sighash_type = bitcoin::sighash::EcdsaSighashType::from_consensus(sighash_type);
+        match cache.p2wsh_signature_hash(
+            idx,
+            bitcoin::WitnessScript::from_bytes(script),
+            amount,
+            sighash_type,
+        ) {
+            Ok(h) => h.to_byte_array(),
+            Err(_) => return str_to_c_string("ERR"),
+        }
+    } else {
+        // Legacy: drop the signature being checked, then all remaining
+        // OP_CODESEPARATORs (the order matches Core: FindAndDelete runs
+        // before the serializer strips separators).
+        let sig = slice::from_raw_parts(sig_data, sig_len);
+        let cleaned = strip_codeseps(&find_and_delete(script, sig));
+        match cache.legacy_signature_hash(
+            idx,
+            bitcoin::ScriptPubKey::from_bytes(&cleaned),
+            sighash_type,
+        ) {
+            Ok(h) => h.to_byte_array(),
+            Err(_) => return str_to_c_string("ERR"),
+        }
+    };
+
+    // Display order is the reverse of the internal byte order.
+    let reversed: Vec<u8> = digest.iter().rev().copied().collect();
+    str_to_c_string(&hex_encode(&reversed))
+}
+
 #[no_mangle]
 pub unsafe extern "C" fn rust_bitcoin_bip32_master_keygen(
     data: *const u8,

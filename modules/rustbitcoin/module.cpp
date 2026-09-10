@@ -155,5 +155,19 @@ std::optional<std::string> Rustbitcoin::merkle_root_compute(
   return result;
 }
 
+std::optional<std::string>
+Rustbitcoin::sighash_compute(const SighashComputeInput &input) const {
+  auto result_ptr = rust_bitcoin_sighash_compute(
+      input.tx_bytes.data(), input.tx_bytes.size(), input.script.data(),
+      input.script.size(), input.sig_to_delete.data(),
+      input.sig_to_delete.size(), input.input_index, input.n_codesep,
+      input.amount, input.sighash_type, input.is_segwit_v0);
+  if (result_ptr == nullptr)
+    return std::nullopt;
+  std::string result(result_ptr);
+  free_c_string(result_ptr);
+  return result;
+}
+
 } // namespace module
 } // namespace bitcoinfuzz

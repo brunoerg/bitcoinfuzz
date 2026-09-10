@@ -289,6 +289,170 @@ func BTCDMerkleRootCompute(data C.ByteArray) *C.char {
 	return C.CString(hashes[0].String() + ";mutated=" + mutatedFlag)
 }
 
+// truncateAfterCodesep returns the subscript starting right after the n-th
+// OP_CODESEPARATOR (0 = no truncation). If the script contains fewer than n
+// separators, it truncates after the last one. Mirrors pbegincodehash in
+// Bitcoin Core's EvalScript.
+func truncateAfterCodesep(script []byte, n uint32) []byte {
+	if n == 0 {
+		return script
+	}
+	var seen uint32
+	start := 0
+	tokenizer := txscript.MakeScriptTokenizer(0, script)
+	for tokenizer.Next() {
+		if tokenizer.Opcode() == 0xab { // OP_CODESEPARATOR
+			// ByteIndex points just past the parsed opcode.
+			start = int(tokenizer.ByteIndex())
+			seen++
+			if seen == n {
+				break
+			}
+		}
+	}
+	return script[start:]
+}
+
+// pushEncode returns the canonical (minimal) script push encoding of data,
+// i.e. what CScript() << data produces in Bitcoin Core.
+func pushEncode(data []byte) []byte {
+	n := len(data)
+	out := make([]byte, 0, n+5)
+	switch {
+	case n < 0x4c:
+		out = append(out, byte(n))
+	case n <= 0xff:
+		out = append(out, 0x4c, byte(n))
+	case n <= 0xffff:
+		out = append(out, 0x4d, byte(n), byte(n>>8))
+	default:
+		out = append(out, 0x4e, byte(n), byte(n>>8), byte(n>>16), byte(n>>24))
+	}
+	return append(out, data...)
+}
+
+// nextOpOffset returns the offset just past the opcode starting at pc,
+// following Bitcoin Core's CScript::GetOp push parsing. The second return
+// value reports whether the opcode parsed cleanly.
+func nextOpOffset(script []byte, pc int) (int, bool) {
+	if pc >= len(script) {
+		return pc, false
+	}
+	opcode := script[pc]
+	i := pc + 1
+	if opcode <= 0x4e { // pushdata family
+		var nSize int
+		switch {
+		case opcode < 0x4c:
+			nSize = int(opcode)
+		case opcode == 0x4c:
+			if len(script)-i < 1 {
+				return i, false
+			}
+			nSize = int(script[i])
+			i++
+		case opcode == 0x4d:
+			if len(script)-i < 2 {
+				return i, false
+			}
+			nSize = int(script[i]) | int(script[i+1])<<8
+			i += 2
+		default: // 0x4e
+			if len(script)-i < 4 {
+				return i, false
+			}
+			nSize = int(script[i]) | int(script[i+1])<<8 | int(script[i+2])<<16 | int(script[i+3])<<24
+			i += 4
+		}
+		if len(script)-i < nSize {
+			return i, false
+		}
+		i += nSize
+	}
+	return i, true
+}
+
+// findAndDelete is an exact port of Bitcoin Core's FindAndDelete(script, CScript() << sig):
+// it walks the script opcode by opcode and removes every occurrence of the
+// canonical push encoding of sig, including matches starting mid-opcode after
+// a previous deletion.
+func findAndDelete(script, sig []byte) []byte {
+	if len(sig) == 0 || len(script) == 0 {
+		return script
+	}
+	b := pushEncode(sig)
+	var result []byte
+	pc, pc2, found := 0, 0, 0
+	for {
+		result = append(result, script[pc2:pc]...)
+		for len(script)-pc >= len(b) && bytes.Equal(script[pc:pc+len(b)], b) {
+			pc += len(b)
+			found++
+		}
+		pc2 = pc
+		next, ok := nextOpOffset(script, pc)
+		if !ok {
+			break
+		}
+		pc = next
+	}
+	if found == 0 {
+		return script
+	}
+	return append(result, script[pc2:]...)
+}
+
+// BTCDSighashCompute computes the legacy (SigVersion::BASE) or segwit v0
+// (BIP143) signature hash for an input, emulating btcd's interpreter:
+// truncate the script after the n-th executed OP_CODESEPARATOR and, for
+// legacy, remove the pushed signature being checked.
+//
+// Input: txData is a serialized transaction; script the scriptCode with
+// code separators intact; sigData the signature blob to delete (legacy only).
+// Output: digest in display byte order, or nil when the input class is
+// unsupported (tx parse failure, no inputs, or btcd's exported sighash API
+// rejecting an unparseable script — the driver compares other modules then).
+//
+//export BTCDSighashCompute
+func BTCDSighashCompute(txData C.ByteArray, scriptData C.ByteArray, sigData C.ByteArray, inputIndex C.uint32_t, nCodesep C.uint32_t, amount C.uint64_t, sighashType C.uint32_t, isV0 C.int) *C.char {
+	txBytes := C.GoBytes(unsafe.Pointer(txData.data), C.int(txData.length))
+	tx, err := btcutil.NewTxFromBytes(txBytes)
+	if err != nil {
+		return nil
+	}
+	msgTx := tx.MsgTx()
+	if len(msgTx.TxIn) == 0 {
+		return nil
+	}
+	idx := int(uint32(inputIndex) % uint32(len(msgTx.TxIn)))
+
+	script := C.GoBytes(unsafe.Pointer(scriptData.data), C.int(scriptData.length))
+	sig := C.GoBytes(unsafe.Pointer(sigData.data), C.int(sigData.length))
+
+	script = truncateAfterCodesep(script, uint32(nCodesep))
+
+	var digest []byte
+	if isV0 == 0 {
+		script = findAndDelete(script, sig)
+		digest, err = txscript.CalcSignatureHash(script, txscript.SigHashType(sighashType), msgTx, idx)
+	} else {
+		// PrevOutputFetcher is only needed for taproot (v1) sighashes; a
+		// canned non-taproot output keeps the v0 midstates tx-local.
+		fetcher := txscript.NewCannedPrevOutputFetcher(nil, 0)
+		sigHashes := txscript.NewTxSigHashes(msgTx, fetcher)
+		digest, err = txscript.CalcWitnessSigHash(script, sigHashes, txscript.SigHashType(sighashType), msgTx, idx, int64(amount))
+	}
+	if err != nil || len(digest) != 32 {
+		return nil
+	}
+
+	// Digest is in internal byte order; display it reversed like
+	// uint256::ToString / chainhash.Hash.String.
+	var h chainhash.Hash
+	copy(h[:], digest)
+	return C.CString(h.String())
+}
+
 //export BTCDTransactionEval
 func BTCDTransactionEval(data C.ByteArray) *C.char {
 	buffer := C.GoBytes(unsafe.Pointer(data.data), data.length)

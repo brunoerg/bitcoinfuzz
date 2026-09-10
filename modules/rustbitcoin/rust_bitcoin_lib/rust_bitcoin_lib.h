@@ -21,3 +21,8 @@ extern "C" char *rust_bitcoin_roundtrip_ellswift(const uint8_t *data,
                                                  size_t len);
 extern "C" char *rust_bitcoin_merkle_root_compute(const uint8_t *data,
                                                   size_t len);
+extern "C" char *rust_bitcoin_sighash_compute(
+    const uint8_t *tx_data, size_t tx_len, const uint8_t *script_data,
+    size_t script_len, const uint8_t *sig_data, size_t sig_len,
+    uint32_t input_index, uint32_t n_codesep, uint64_t amount,
+    uint32_t sighash_type, bool is_segwit_v0);
