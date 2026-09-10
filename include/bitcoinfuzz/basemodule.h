@@ -60,6 +60,39 @@ struct SilentPaymentsCreateOutputsInput {
   std::vector<uint32_t> recipient_labels;
 };
 
+// BIP-173/BIP-350 segwit address encode + decode round-trip input.
+//
+// The fields are generated already conformant (witness version 0..16, program
+// 2..40 bytes, 20 or 32 for version 0) so nearly every input reaches the
+// checksum code instead of being rejected by a length check up front. The HRP
+// is deliberately not restricted to "bc"/"tb"/"bcrt": the encoders take it as a
+// parameter, and a long HRP is what pushes the encoded string against the
+// BIP-173 90 character limit where the off-by-one bugs live.
+struct Bech32SegwitInput {
+  // Human-readable part: 1..83 characters, all in the BIP-173 range [33,126]
+  // and lowercased, since an uppercase HRP makes encoding unconditionally
+  // invalid (and trips an assertion in some encoders).
+  std::string hrp;
+  // Witness version, 0..16. Selects bech32 (version 0) or bech32m (1..16).
+  uint8_t witver{0};
+  // Witness program, 2..40 bytes; exactly 20 or 32 when witver is 0.
+  std::vector<uint8_t> program;
+};
+
+// Input for the 5 <-> 8 bit regrouping primitive that sits under every bech32
+// codec. Exposed on its own because the interesting inputs are the ones an
+// address encoder never produces: elements that do not fit in from_bits, where
+// an implementation must reject rather than silently truncate.
+struct Bech32ConvertBitsInput {
+  // Source group size in bits. Either 5 or 8; to_bits is always the other one.
+  uint8_t from_bits{8};
+  uint8_t to_bits{5};
+  // Whether a trailing incomplete group is zero-padded (encode direction) or
+  // must be absent/zero (decode direction).
+  bool pad{false};
+  std::vector<uint8_t> data;
+};
+
 class BaseModule {
 public:
   const std::string name;
@@ -163,6 +196,18 @@ public:
   musig2_sign_session(const Musig2SignSessionInput &input) const;
   virtual std::optional<std::string> silentpayments_create_outputs(
       const SilentPaymentsCreateOutputsInput &input) const;
+
+  // Encodes (hrp, witver, program) as a segwit address and decodes the result
+  // back with the same implementation. Returns "ENC:FAIL" when the encoder
+  // rejects the input, otherwise "ENC:<address>|DEC:v<version>:<program-hex>"
+  // or "ENC:<address>|DEC:FAIL" when an implementation cannot read back its own
+  // output.
+  virtual std::optional<std::string>
+  bech32_segwit_roundtrip(const Bech32SegwitInput &input) const;
+  // Regroups input.data from input.from_bits to input.to_bits. Returns
+  // "OK:<hex>" or "ERR" when the implementation rejects the input.
+  virtual std::optional<std::string>
+  bech32_convert_bits(const Bech32ConvertBitsInput &input) const;
 
   virtual ~BaseModule() noexcept;
 };

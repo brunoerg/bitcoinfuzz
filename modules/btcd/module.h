@@ -41,6 +41,10 @@ public:
       std::span<const uint8_t> buffer) const override;
   std::optional<std::string> merkle_root_compute(
       const std::vector<std::vector<uint8_t>> &hashes) const override;
+  std::optional<std::string>
+  bech32_segwit_roundtrip(const Bech32SegwitInput &input) const override;
+  std::optional<std::string>
+  bech32_convert_bits(const Bech32ConvertBitsInput &input) const override;
   ~Btcd() noexcept override = default;
 };
 

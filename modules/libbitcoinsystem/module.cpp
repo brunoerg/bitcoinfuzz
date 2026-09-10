@@ -206,9 +206,21 @@ LibbitcoinSystem::address_parse(std::string str) const {
       case wallet::witness_address::program_type::version1_taproot:
         prefix = "TR:";
         break;
-      case wallet::witness_address::program_type::unknown:
-        prefix = "UNK:";
-        break;
+      case wallet::witness_address::program_type::unknown: {
+        // A witness program with no defined output type yet: versions 2..16,
+        // and version 1 programs that are not taproot. Reported with the
+        // decoded version and program rather than as an opaque "UNK:" so the
+        // driver can still compare what was decoded against the other
+        // implementations that accept these addresses.
+        std::ostringstream program;
+        program << std::hex << std::setfill('0');
+        for (const uint8_t byte : segwit_addr.program())
+          program << std::setw(2) << static_cast<unsigned int>(byte);
+        return "WITNESS_UNKNOWN:v" +
+               std::to_string(
+                   static_cast<unsigned int>(segwit_addr.version())) +
+               ":" + program.str();
+      }
       default:
         return "INVALID";
       }

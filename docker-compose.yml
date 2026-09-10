@@ -536,3 +536,17 @@ services:
       MODULES: ${MODULES:-}
     volumes:
       - ./docker:/app/data
+
+  bech32_roundtrip:
+    build:
+      context: .
+      tags:
+        - bitcoinfuzz:bech32_roundtrip
+      args:
+        CXXFLAGS: "-DBITCOIN_CORE -DRUST_BITCOIN -DBTCD -DLIBWALLY_CORE"
+        FUZZ: bech32_roundtrip
+    env_file: .env
+    environment:
+      MODULES: ${MODULES:-}
+    volumes:
+      - ./docker:/app/data

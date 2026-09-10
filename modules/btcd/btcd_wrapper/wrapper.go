@@ -24,6 +24,7 @@ import (
 	"encoding/hex"
 
 	btcdaddress "github.com/btcsuite/btcd/address/v2"
+	"github.com/btcsuite/btcd/address/v2/bech32"
 	"github.com/btcsuite/btcd/addrmgr"
 	"github.com/btcsuite/btcd/blockchain"
 	"github.com/btcsuite/btcd/btcec/v2"
@@ -438,11 +439,82 @@ func BTCDAddress(data C.ByteArray) *C.char {
 		prefix = "WSH:"
 	case *btcdaddress.AddressTaproot:
 		prefix = "TR:"
+	case *btcdaddress.AddressPayToAnchor:
+		// A witness v1 program that is not a taproot output. Reported with
+		// its decoded version and program rather than as an opaque "UNK:" so
+		// it can still be compared against the implementations that have no
+		// dedicated type for it.
+		return C.CString(fmt.Sprintf(
+			"WITNESS_UNKNOWN:v1:%x", addr.ScriptAddress(),
+		))
 	default:
 		prefix = "UNK:"
 	}
 
 	return C.CString(prefix + addr.EncodeAddress())
+}
+
+//export BTCDBech32SegwitRoundtrip
+func BTCDBech32SegwitRoundtrip(hrpData C.ByteArray, witver C.int, progData C.ByteArray) *C.char {
+	hrp := string(C.GoBytes(unsafe.Pointer(hrpData.data), hrpData.length))
+	program := C.GoBytes(unsafe.Pointer(progData.data), progData.length)
+
+	converted, err := bech32.ConvertBits(program, 8, 5, true)
+	if err != nil {
+		return C.CString("ENC:FAIL")
+	}
+	data := append([]byte{byte(witver)}, converted...)
+
+	var address string
+	if witver == 0 {
+		address, err = bech32.Encode(hrp, data)
+	} else {
+		address, err = bech32.EncodeM(hrp, data)
+	}
+	if err != nil {
+		return C.CString("ENC:FAIL")
+	}
+
+	// bech32.Encode is the bare codec and enforces no length limit of its own,
+	// while BIP-173 caps a segwit address at 90 characters. Applying the cap
+	// here keeps this module from reporting an address that no conformant
+	// decoder, including btcd's own, would accept.
+	if len(address) > 90 {
+		return C.CString("ENC:FAIL")
+	}
+
+	decodedHrp, decodedData, version, err := bech32.DecodeGeneric(address)
+	if err != nil || decodedHrp != hrp || len(decodedData) == 0 {
+		return C.CString("ENC:" + address + "|DEC:FAIL")
+	}
+
+	expected := bech32.VersionM
+	if decodedData[0] == 0 {
+		expected = bech32.Version0
+	}
+	if version != expected {
+		return C.CString("ENC:" + address + "|DEC:FAIL")
+	}
+
+	regrouped, err := bech32.ConvertBits(decodedData[1:], 5, 8, false)
+	if err != nil {
+		return C.CString("ENC:" + address + "|DEC:FAIL")
+	}
+
+	return C.CString(fmt.Sprintf(
+		"ENC:%s|DEC:v%d:%x", address, decodedData[0], regrouped,
+	))
+}
+
+//export BTCDBech32ConvertBits
+func BTCDBech32ConvertBits(data C.ByteArray, fromBits C.int, toBits C.int, pad C.int) *C.char {
+	in := C.GoBytes(unsafe.Pointer(data.data), data.length)
+
+	regrouped, err := bech32.ConvertBits(in, uint8(fromBits), uint8(toBits), pad != 0)
+	if err != nil {
+		return C.CString("ERR")
+	}
+	return C.CString(fmt.Sprintf("OK:%x", regrouped))
 }
 
 //export BTCDBip32MasterKeygen

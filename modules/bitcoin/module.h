@@ -42,6 +42,10 @@ public:
   std::optional<std::string>
   aes256_cbc(std::span<const uint8_t> key, std::span<const uint8_t> iv,
              bool pad, std::span<const uint8_t> data) const override;
+  std::optional<std::string>
+  bech32_segwit_roundtrip(const Bech32SegwitInput &input) const override;
+  std::optional<std::string>
+  bech32_convert_bits(const Bech32ConvertBitsInput &input) const override;
   ~Bitcoin() noexcept override = default;
 };
 

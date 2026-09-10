@@ -246,5 +246,40 @@ Btcd::bip32_deserialize_extended_key(std::span<const uint8_t> buffer) const {
   return res;
 }
 
+std::optional<std::string>
+Btcd::bech32_segwit_roundtrip(const Bech32SegwitInput &input) const {
+  ByteArray hrp{.data = const_cast<char *>(input.hrp.data()),
+                .length = static_cast<int>(input.hrp.size())};
+  ByteArray program{.data = reinterpret_cast<char *>(
+                        const_cast<uint8_t *>(input.program.data())),
+                    .length = static_cast<int>(input.program.size())};
+
+  char *result =
+      BTCDBech32SegwitRoundtrip(hrp, static_cast<int>(input.witver), program);
+  if (!result)
+    return std::nullopt;
+
+  std::string res(result);
+  BTCDFreeString(result);
+  return res;
+}
+
+std::optional<std::string>
+Btcd::bech32_convert_bits(const Bech32ConvertBitsInput &input) const {
+  ByteArray data{.data = reinterpret_cast<char *>(
+                     const_cast<uint8_t *>(input.data.data())),
+                 .length = static_cast<int>(input.data.size())};
+
+  char *result =
+      BTCDBech32ConvertBits(data, static_cast<int>(input.from_bits),
+                            static_cast<int>(input.to_bits), input.pad ? 1 : 0);
+  if (!result)
+    return std::nullopt;
+
+  std::string res(result);
+  BTCDFreeString(result);
+  return res;
+}
+
 } // namespace module
 } // namespace bitcoinfuzz
