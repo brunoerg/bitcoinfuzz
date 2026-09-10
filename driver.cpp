@@ -2,6 +2,7 @@
 #include <cassert>
 #include <fuzzer/FuzzedDataProvider.h>
 #include <iostream>
+#include <set>
 #include <string>
 #include <string_view>
 #include <unistd.h>
@@ -818,6 +819,82 @@ void Driver::MerkleRootComputeTarget(std::span<const uint8_t> buffer) const {
   }
 }
 
+void Driver::StumpUpdateTarget(std::span<const uint8_t> buffer) const {
+  FuzzedDataProvider provider(buffer.data(), buffer.size());
+
+  // Number of leaves added alongside the deletions in the second update,
+  // mimicking a block that both creates and spends UTXOs.
+  size_t new_add_count = provider.ConsumeIntegralInRange<size_t>(0, 32);
+
+  // Seeds selecting which first-batch leaves get deleted; resolved modulo the
+  // first batch size once it is known.
+  size_t del_seed_count = provider.ConsumeIntegralInRange<size_t>(0, 64);
+  std::vector<uint16_t> del_seeds;
+  del_seeds.reserve(del_seed_count);
+  for (size_t i = 0; i < del_seed_count; i++)
+    del_seeds.push_back(provider.ConsumeIntegral<uint16_t>());
+
+  // The rest of the buffer is consumed as 16-byte seeds, each mirrored into
+  // a 32-byte leaf hash. Both libraries assume node hashes never collide
+  // (they are hash-function outputs in production), but with raw 32-byte
+  // leaves libFuzzer's CMP feedback learns internal parentHash values and
+  // feeds them back as leaves, breaking that assumption in ways the
+  // libraries handle differently. A mirrored leaf can never equal a
+  // parentHash output (a 2^-128 event), keeping such collisions unreachable.
+  //
+  // Skip all-zero leaves because they collide with the accumulators'
+  // empty-node marker, and skip leaves sharing a 12-byte prefix with an
+  // earlier one: utreexod's position map is keyed by the first 12 bytes of
+  // the leaf hash, so prefix collisions make it prove the wrong leaf while
+  // rustreexo (keyed by the full hash) stays correct.
+  std::vector<std::vector<uint8_t>> hashes;
+  std::set<std::vector<uint8_t>> seen_prefixes;
+  while (true) {
+    auto seed = provider.ConsumeBytes<uint8_t>(16);
+    if (seed.size() < 16)
+      break;
+    if (std::all_of(seed.begin(), seed.end(),
+                    [](uint8_t byte) { return byte == 0; }))
+      continue;
+    std::vector<uint8_t> hash(seed);
+    hash.insert(hash.end(), seed.begin(), seed.end());
+    std::vector<uint8_t> prefix(hash.begin(), hash.begin() + 12);
+    if (!seen_prefixes.insert(std::move(prefix)).second)
+      continue;
+    hashes.push_back(std::move(hash));
+  }
+
+  // Split the hashes: the tail becomes the second-batch additions, the rest
+  // seeds the accumulator and provides the deletion candidates.
+  new_add_count = std::min(new_add_count, hashes.size());
+  std::vector<std::vector<uint8_t>> new_add_hashes(hashes.end() - new_add_count,
+                                                   hashes.end());
+  hashes.resize(hashes.size() - new_add_count);
+
+  std::vector<std::vector<uint8_t>> del_hashes;
+  if (!hashes.empty()) {
+    std::set<size_t> del_indices;
+    for (const auto seed : del_seeds) {
+      size_t index = seed % hashes.size();
+      if (del_indices.insert(index).second)
+        del_hashes.push_back(hashes[index]);
+    }
+  }
+
+  std::optional<std::string> last_response{std::nullopt};
+  std::string last_module_name;
+
+  for (auto &module : modules) {
+    std::optional<std::string> res{
+        module.second->stump_update(hashes, del_hashes, new_add_hashes)};
+    if (!res.has_value())
+      continue;
+
+    VerifyMatchingResponse(last_response, last_module_name, module.first, *res,
+                           "StumpUpdateTarget failed");
+  }
+}
+
 void Driver::Bip32DeriveFromPathTarget(std::span<const uint8_t> buffer) const {
   FuzzedDataProvider provider(buffer.data(), buffer.size());
   std::string path{provider.ConsumeRemainingBytesAsString()};
@@ -1087,6 +1164,8 @@ void Driver::Run(const uint8_t *data, const size_t size,
     this->StumpModifyAddTarget(buffer);
   } else if (target == "merkle_root_compute") {
     this->MerkleRootComputeTarget(buffer);
+  } else if (target == "stump_update") {
+    this->StumpUpdateTarget(buffer);
   } else if (target == "bip32_derive_from_path") {
     this->Bip32DeriveFromPathTarget(buffer);
   } else if (target == "musig2_key_agg") {

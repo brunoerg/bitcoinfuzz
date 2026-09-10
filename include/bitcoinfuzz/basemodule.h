@@ -151,6 +151,15 @@ public:
   // all (e.g. rust-bitcoin returns None for mutated lists).
   virtual std::optional<std::string>
   merkle_root_compute(const std::vector<std::vector<uint8_t>> &hashes) const;
+  // Full accumulator update cycle: add `add_hashes` to an empty accumulator,
+  // prove `del_hashes` (a subset of `add_hashes`) with the module's full
+  // accumulator, then apply the deletion together with `new_add_hashes` to a
+  // Stump via the proof. Returns the serialized final stump and accumulator
+  // roots.
+  virtual std::optional<std::string>
+  stump_update(const std::vector<std::vector<uint8_t>> &add_hashes,
+               const std::vector<std::vector<uint8_t>> &del_hashes,
+               const std::vector<std::vector<uint8_t>> &new_add_hashes) const;
 
   virtual std::optional<std::string>
   bip32_derive_from_path(std::span<const uint8_t> buffer) const;

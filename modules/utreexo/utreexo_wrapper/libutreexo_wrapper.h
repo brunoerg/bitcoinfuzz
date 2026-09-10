@@ -94,6 +94,7 @@ extern "C" {
 #endif
 
 extern char* UtreexoStumpUpdate(ByteArray newTxouts);
+extern char* UtreexoStumpUpdateWithDels(ByteArray addHashes, ByteArray delHashes, ByteArray newAddHashes);
 extern char* UtreexoVerify(char* buffer);
 
 #ifdef __cplusplus

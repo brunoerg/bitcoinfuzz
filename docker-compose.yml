@@ -454,6 +454,17 @@ services:
     env_file: .env
     volumes:
       - ./docker:/app/data
+  stump_update:
+    build:
+      context: .
+      tags:
+        - bitcoinfuzz:stump_update
+      args:
+        CXXFLAGS: "-DRUSTREEXO -DUTREEXO"
+        FUZZ: stump_update
+    env_file: .env
+    volumes:
+      - ./docker:/app/data
   bip32_derive_from_path:
     build:
       context: .
