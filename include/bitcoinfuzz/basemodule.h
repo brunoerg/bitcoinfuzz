@@ -151,6 +151,21 @@ public:
   // all (e.g. rust-bitcoin returns None for mutated lists).
   virtual std::optional<std::string>
   merkle_root_compute(const std::vector<std::vector<uint8_t>> &hashes) const;
+  // Parses a BIP37 partial Merkle tree (nTransactions u32 LE | CompactSize n
+  // | n*32-byte hashes | CompactSize m | m flag bytes) and extracts the
+  // matched transactions, emulating CMerkleBlock extraction semantics.
+  // Returns one of:
+  //   "PARSE_ERR"  — the byte stream is malformed (truncated, non-canonical
+  //                  CompactSize, ...)
+  //   "REJECT"     — parsed but the tree is invalid (Core's ExtractMatches
+  //                  returning the zero hash; covers nTransactions==0,
+  //                  too many transactions/hashes, bit/hash underflow during
+  //                  traversal, CVE-2012-2459 duplicated branches, trailing
+  //                  unconsumed bits or hashes)
+  //   "<root_hex>;m=<txid>@<idx>,..." — root and matched txids with their
+  //                  leaf indices, in traversal order (display byte order)
+  virtual std::optional<std::string>
+  partial_merkle_tree(std::span<const uint8_t> buffer) const;
 
   virtual std::optional<std::string>
   bip32_derive_from_path(std::span<const uint8_t> buffer) const;

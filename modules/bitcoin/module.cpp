@@ -17,6 +17,7 @@ const TranslateFn G_TRANSLATION_FUN{nullptr};
 #include "descriptor.h"
 #include "key.h"
 #include "key_io.h"
+#include "merkleblock.h"
 #include "module.h"
 #include "primitives/block.h"
 #include "primitives/transaction.h"
@@ -431,6 +432,34 @@ std::optional<std::string> Bitcoin::merkle_root_compute(
 
   // Root in display byte order, plus the CVE-2012-2459 mutation flag.
   return root.ToString() + ";mutated=" + (mutated ? "1" : "0");
+}
+
+std::optional<std::string>
+Bitcoin::partial_merkle_tree(std::span<const uint8_t> buffer) const {
+  DataStream ds{buffer};
+  CPartialMerkleTree pmt;
+  try {
+    ds >> pmt;
+  } catch (const std::ios_base::failure &e) {
+    return "PARSE_ERR";
+  }
+
+  std::vector<Txid> matches;
+  std::vector<unsigned int> indexes;
+  const uint256 root{pmt.ExtractMatches(matches, indexes)};
+  // ExtractMatches returns the zero hash for every failure mode
+  // (bad structure, CVE-2012-2459 duplicated branch, unconsumed bits/hashes).
+  if (root.IsNull()) {
+    return "REJECT";
+  }
+
+  std::string res{root.ToString() + ";m="};
+  for (size_t i = 0; i < matches.size(); ++i) {
+    res += matches[i].ToString() + "@" + std::to_string(indexes[i]);
+    if (i + 1 < matches.size())
+      res += ",";
+  }
+  return res;
 }
 
 std::optional<std::string> Bitcoin::address_parse(std::string str) const {

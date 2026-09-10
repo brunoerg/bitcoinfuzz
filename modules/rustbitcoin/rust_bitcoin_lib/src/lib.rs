@@ -399,6 +399,48 @@ pub unsafe extern "C" fn rust_bitcoin_merkle_root_compute(
     }
 }
 
+/// Parses a BIP37 partial Merkle tree (nTransactions | hashes | flag bytes)
+/// and extracts the matched transactions, mirroring Bitcoin Core's
+/// CPartialMerkleTree::ExtractMatches. Trailing bytes are tolerated, matching
+/// Core's DataStream behavior. Rejection reasons are normalized to "REJECT"
+/// because Core collapses all of them into a zero-hash return.
+#[no_mangle]
+pub unsafe extern "C" fn rust_bitcoin_partial_merkle_tree(
+    data: *const u8,
+    len: usize,
+) -> *mut c_char {
+    let data_slice = slice::from_raw_parts(data, len);
+    let mut cursor = data_slice;
+    let pmt = match decode_from_slice_unbounded::<p2p::merkle_tree::PartialMerkleTree>(&mut cursor)
+    {
+        Ok(pmt) => pmt,
+        Err(_) => return str_to_c_string("PARSE_ERR"),
+    };
+
+    let mut matches: Vec<bitcoin::Txid> = Vec::new();
+    let mut indexes: Vec<u32> = Vec::new();
+    match pmt.extract_matches(&mut matches, &mut indexes) {
+        Err(_) => str_to_c_string("REJECT"),
+        Ok(root) => {
+            // Core signals every extraction failure with the zero hash, so a
+            // zero root is indistinguishable from rejection in its API (and
+            // is treated as rejection by all its callers); map to the same
+            // sentinel for comparability.
+            if root == bitcoin::TxMerkleNode::from_byte_array([0u8; 32]) {
+                return str_to_c_string("REJECT");
+            }
+            let mut result = format!("{};m=", root);
+            for (i, (txid, idx)) in matches.iter().zip(indexes.iter()).enumerate() {
+                if i > 0 {
+                    result.push(',');
+                }
+                result.push_str(&format!("{}@{}", txid, idx));
+            }
+            str_to_c_string(&result)
+        }
+    }
+}
+
 #[no_mangle]
 pub unsafe extern "C" fn rust_bitcoin_bip32_master_keygen(
     data: *const u8,

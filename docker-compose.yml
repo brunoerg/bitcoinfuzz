@@ -486,6 +486,22 @@ services:
     volumes:
       - ./docker:/app/data
 
+  partial_merkle_tree:
+    build:
+      context: .
+      tags:
+        - bitcoinfuzz:partial_merkle_tree
+      args:
+        CXXFLAGS: "-DBITCOIN_CORE -DRUST_BITCOIN"
+        FUZZ: partial_merkle_tree
+    environment:
+      MODULES: ${MODULES:-}
+      LIBFUZZ_DETECT_LEAKS: 0
+      ASAN_OPTIONS: detect_leaks=0
+    env_file: .env
+    volumes:
+      - ./docker:/app/data
+
   musig2_key_agg:
     build:
       context: .
